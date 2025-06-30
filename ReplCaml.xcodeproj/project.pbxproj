@@ -6,7 +6,12 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		C64A10542E125B4E007779CB /* .gitignore in Resources */ = {isa = PBXBuildFile; fileRef = C64A10532E125B44007779CB /* .gitignore */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXFileReference section */
+		C64A10532E125B44007779CB /* .gitignore */ = {isa = PBXFileReference; lastKnownFileType = text; path = .gitignore; sourceTree = "<group>"; };
 		C6A09C5F2E03B15B004D6D12 /* ReplCaml.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ReplCaml.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
@@ -32,6 +37,7 @@
 		C6A09C562E03B15B004D6D12 = {
 			isa = PBXGroup;
 			children = (
+				C64A10532E125B44007779CB /* .gitignore */,
 				C6A09C612E03B15B004D6D12 /* ReplCaml */,
 				C6A09C602E03B15B004D6D12 /* Products */,
 			);
@@ -109,6 +115,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				C64A10542E125B4E007779CB /* .gitignore in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
