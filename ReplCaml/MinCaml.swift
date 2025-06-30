@@ -1,8 +1,21 @@
 import Foundation
 
+public class Id {
+    public typealias T = String
+    private static var counter = 0
+    init() {}
+    static func genid(_ s: String) -> T {
+        counter += 1
+        return "\(s).\(Id.counter)"
+    }
+    static func gentmp(_ t: Typ) -> T {
+        counter += 1
+        return "T\(t.rep)\(Id.counter)"
+    }
+}
 public final class Opt: Equatable, CustomStringConvertible {
     typealias T = Typ
-    private var v: T?
+    var v: T?
     init(_ v: T? = nil) {
         self.v = v
     }
@@ -23,6 +36,14 @@ public indirect enum Typ: Equatable, CustomStringConvertible {
     case FLOAT
     case VAR(Opt)
     case FUN([Self], Self)
+    public func deref() -> Typ {
+        if case .VAR(let opt) = self {
+            if let v = opt.v {
+                return v
+            }
+        }
+        return self
+    }
     static func newvar() -> Self { Typ.VAR(Opt(nil)) }
     public var description: String {
         switch self {
@@ -34,14 +55,28 @@ public indirect enum Typ: Equatable, CustomStringConvertible {
         case .FUN(let a, let r): return "(\(a.map(\.description).joined(separator: ", ")))->\(r.description)"
         }
     }
+    var rep: String {
+        switch self {
+        case .UNIT: return "u"
+        case .BOOL: return "b"
+        case .INT: return "i"
+        case .FLOAT: return "d"
+        case .FUN: return "f"
+        case .VAR: return "bug:Typ.rep(var)"
+        }
+    }
 }
 
-public final class Ident: Equatable, CustomStringConvertible {
+public class Ident: Equatable, CustomStringConvertible {
     var name: String
     var typ: Typ
     init(_ name: String) {
         self.name = name
-        self.typ = Typ.newvar( )
+        self.typ = Typ.newvar()
+    }
+    init(_ name: String, _ typ: Typ) {
+        self.name = name
+        self.typ = typ
     }
     public func update(_ t: Typ) {
         if case .VAR(let v) = self.typ {
@@ -91,6 +126,7 @@ public indirect enum Syntax: Equatable, CustomStringConvertible {
 
     static func p(_ p: String, _ l: T, _ r: T) -> T { .CMP(pred: p, lhs: l, rhs: r) }
     static func a(_ l: T, _ r: T) -> T { .ADD(lhs: l, rhs: r) }
+    static func m(_ l: T, _ r: T) -> T { .MUL(lhs: l, rhs: r) }
     static func x(_ f: T, _ a: [T]) -> T { .APP(fn: f, args: a) }
 
     func eq(_ ch: String) -> Bool {
@@ -128,6 +164,108 @@ public indirect enum Syntax: Equatable, CustomStringConvertible {
         case .punct(let x): return "(punct \(x))"
         case .composite(let xs): return "(\(xs.map(\.description).joined(separator: " ")))"
         }
+    }
+}
+
+public indirect enum KNormalT: CustomStringConvertible {
+    public typealias T = Self
+    public typealias I = Id.T
+    case UNIT
+    case INT(Int)
+    case FLOAT(Double)
+//    case MOP(String, I)
+//    case DOP(String, I, I)
+    case ADD(I, I)
+    case MUL(I, I)
+//    case COND(String, I, I, T, T)
+    case IFEQ(I, I, T, T)
+    case LET(Ident, T, T)
+    case VAR(I)
+    case LETREC(Ident, [Ident], T, T)
+    case APP(I, [I])
+
+    public var to_i: Int? { if case .INT(let i) = self {return i} else {return nil}}
+    public var description: String {
+        switch self {
+        case .UNIT: return "()"
+        case .INT(let x): return "\(x)i"
+        case .FLOAT(let x): return "\(x)f"
+        case .ADD(let l, let r): return "(+ \(l) \(r))"
+        case .MUL(let l, let r): return "(* \(l) \(r))"
+        case .IFEQ(let l, let r, let a, let b): return "(ifeq \(l) \(r) \(a) \(b))"
+        case .LET(let n, let v, let e): return "(let \(n)=\(v) in \(e))"
+        case .VAR(let n): return "(var \(n))"
+        case .LETREC(let n, let a, let b, let e): return "(letrec \(n) \(a.map(\.description).joined(separator: " "))=\(b) in \(e))"
+        case .APP(let f, let a): return "(app \(f) \(a))"
+        }
+    }
+}
+
+public struct KNormal {
+    public var env: [String: Typ] = [:]
+    public var k = KNormalT.UNIT
+    func insert_let(_ et: (e: KNormalT, t: Typ), _ k: (String)->(KNormalT, Typ)) -> (KNormalT, Typ) {
+        if case .VAR(let x) = et.e { return k(x) }
+        else {
+            let x = Id.gentmp(et.t)
+            let (e, t) = k(x)
+            return (.LET(Ident(x, et.t), et.e, e), t)
+        }
+    }
+    func g(_ env: inout [String: Typ], _ s: Syntax) -> (KNormalT, Typ) {
+        switch s {
+        case .UNIT: return (.UNIT, .UNIT)
+        case .BOOL(let b): return (.INT(b ? 1 : 0), .INT)
+        case .INT(let i): return (.INT(i), .INT)
+        case .FLOAT(let d): return (.FLOAT(d), .FLOAT)
+// .NOT
+        case .ADD(lhs: let lhs, rhs: let rhs):
+            return insert_let(g(&env, lhs)) { x in insert_let(g(&env, rhs)) { y in return (.ADD(x, y), .INT) } }
+//        case .SUB(lhs: let lhs, rhs: let rhs):
+//            insert_let(g(&env, lhs)) { x in insert_let(g(&env, rhs)) { y in return (.ADD(x, y), .INT) } }
+        case .MUL(lhs: let lhs, rhs: let rhs):
+            return insert_let(g(&env, lhs)) { x in insert_let(g(&env, rhs)) { y in return (.MUL(x, y), .INT) } }
+//        case .DIV(lhs: let lhs, rhs: let rhs):
+//            insert_let(g(&env, lhs)) { x in insert_let(g(&env, rhs)) { y in return (.ADD(x, y), .INT) } }
+        case .VAR(let x): return (.VAR(x), env[x] ?? .INT) // forcing to int
+        case .LET(name: let xt, value: let v, in: let e):
+            let (e1, t1) = g(&env, v)
+            env[xt.name] = xt.typ
+            let (e2, t2) = g(&env, e)
+            return (.LET(xt, e1, e2), t2)
+        case .LETREC(name: let xt, args: let a, body: let b, in: let e):
+            var cl = env
+            cl[xt.name] = xt.typ
+            env[xt.name] = xt.typ
+            let (e2, t2) = g(&cl, e)
+            a.forEach { cl[$0.name] = $0.typ }
+            let (e1, t1) = g(&cl, b)
+            return (.LETREC(xt, a, e1, e2), t2)
+        case .APP(fn: let fn, args: let args):
+            let g_e1 = g(&env, fn)
+            if case .FUN(_, let t) = g_e1.1 {
+                return insert_let(g_e1) { f in
+                    func bind(_ xs: [String], _ rs: [Syntax]) -> (KNormalT, Typ) {
+                        if rs.isEmpty { return (.APP(f, xs), t) }
+                        return insert_let(g(&env, rs.first!)) { x in
+                            return bind(xs + [x], [Syntax](rs.dropFirst()))
+                        }
+                    }
+                    return bind([], args)
+                }
+            } else { return (.UNIT, .UNIT) }
+
+//        case .COND(pred: let pred, ifthen: let ifthen, ifelse: let ifelse):
+//        case .CMP(pred: let pred, lhs: let lhs, rhs: let rhs):
+
+        default: return (.UNIT, .UNIT)
+        }
+    }
+    init(_ e: Syntax) {
+        var env: [String: Typ] = [:]
+        let kt = g(&env, e)
+        self.env = env
+        self.k = kt.0
     }
 }
 
@@ -225,10 +363,10 @@ struct Typing {
             var cl = env
             let at = a.map { let t = Typ.newvar(); cl[$0.name] = t; return t }
             let bt = infer(&cl, b)
-            let t = Typ.FUN(at, bt)
+            let t = Typ.FUN(at.map {$0.deref()}, bt.deref())
             cl[n.name] = t
             env[n.name] = t
-            n.update(t)
+            n.typ = t
             return infer(&cl, e)
         case .COND(_, let t, let e): let tt = infer(&env, t); let te = infer(&env, e); return infer(&env, t)
         case .CMP: return .BOOL
@@ -245,6 +383,8 @@ struct Typing {
         }
     }
 }
+
+
 struct MinCaml {
     let ps = Parser()
     init() { }
@@ -255,6 +395,9 @@ struct MinCaml {
             let x = Typing(ast.first!)
             var out = ast.map(\.description)
             out.append(x.env.description)
+            let y = KNormal(ast.first!)
+            out.append(y.k.description)
+            out.append(y.env.description)
             return out
         } else { return nil }
 
