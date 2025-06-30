@@ -1,65 +1,97 @@
 import Foundation
 
-public indirect enum Ty: Equatable {
+public final class Opt: Equatable, CustomStringConvertible {
+    typealias T = Typ
+    private var v: T?
+    init(_ v: T? = nil) {
+        self.v = v
+    }
+    func update(_ v: T) {
+        self.v = v
+    }
+    public static func == (lhs: Opt, rhs: Opt) -> Bool {
+        return lhs.v == rhs.v
+    }
+    public var description: String { return v?.description ?? "#undef" }
+}
+
+public indirect enum Typ: Equatable, CustomStringConvertible {
+    typealias T = Self
     case UNIT
     case BOOL
     case INT
     case FLOAT
-    case VAR(Self?)
+    case VAR(Opt)
     case FUN([Self], Self)
-    mutating func assign(vartype t: Ty) {
-        if case .VAR(.none) = self {
-            self = .VAR(t)
+    static func newvar() -> Self { Typ.VAR(Opt(nil)) }
+    public var description: String {
+        switch self {
+        case .UNIT: return "()"
+        case .BOOL: return "Bool"
+        case .INT: return "Int"
+        case .FLOAT: return "Float"
+        case .VAR(let v): return v.description
+        case .FUN(let a, let r): return "(\(a.map(\.description).joined(separator: ", ")))->\(r.description)"
         }
     }
 }
-public class Ident: Equatable, CustomStringConvertible {
-    var t: Ty
+
+public final class Ident: Equatable, CustomStringConvertible {
     var name: String
-    init(_ name: String, _ t: Ty = .VAR(nil)) {
-        self.t = t
+    var typ: Typ
+    init(_ name: String) {
         self.name = name
+        self.typ = Typ.newvar( )
     }
-    public func assign(type t: Ty) {
-        self.t = t
+    public func update(_ t: Typ) {
+        if case .VAR(let v) = self.typ {
+            v.update(t)
+        }
     }
     public static func == (lhs: Ident, rhs: Ident) -> Bool {
         lhs.name == rhs.name
     }
-    public var description: String { "\(name):\(t)" }
-}
-public struct Fundef: Equatable, CustomStringConvertible {
-    var name: Ident
-    var args: [Ident]
-    var body: Syntax
-    init(_ name: String, _ args: [Syntax], _ body: Syntax) {
-        self.name = Ident(name)
-        self.args = args.map(\.asIndent)
-        self.body = body
-    }
-    public var description: String { "((\(name) \(args.map(\.description).joined(separator: " "))) \(body))" }
+    public var description: String { "\(name):\(typ)" }
 }
 
 public indirect enum Syntax: Equatable, CustomStringConvertible {
+    public typealias T = Self
     case UNIT
     case BOOL(Bool)
     case INT(Int)
     case FLOAT(Double)
     case VAR(String)
-    
-    case ADD(Self, Self)
-    case SUB(Self, Self)
-    case MUL(Self, Self)
-    case DIV(Self, Self)
-    case LET(Ident, Self, Self)
-    case LETREC(Fundef, Self)
-    case APP(Self, [Self])
-    case COND(Self, Self, Self)
-    case CMP(Self, Self, Self)
+
+    case LET(name: Ident, value: T, in: T)
+    case LETREC(name: Ident, args: [Ident], body: T, in: T)
+    case APP(fn: T, args: [T])
+    case COND(pred: T, ifthen: T, ifelse: T)
     case SEMICOLON
 
+    case ADD(lhs: T, rhs: T)
+    case SUB(lhs: T, rhs: T)
+    case MUL(lhs: T, rhs: T)
+    case DIV(lhs: T, rhs: T)
+    case CMP(pred: String, lhs: T, rhs: T)
+    //    case MOP(op: T, rhs: T) // regular monadic operator
+    //    case DOP(op: T, lhs: T, rhs: T) // regular dyadic operator
+    //    case MFN(fn: T, rhs: T) // regular monadic function
+    //    case DFN(fn: T, lhs: T, rhs: T) // regular dyadic function
+
     case punct(String)
-    case composite([Self])
+    case composite([T])
+
+    static func u() -> T { .UNIT }
+    static func b(_ n: Bool) -> T { .BOOL(n) }
+    static func i(_ n: Int) -> T { .INT(n) }
+    static func v(_ s: String) -> T { .VAR(s) }
+    static func d(_ n: String, _ v: T, in e: T) -> T  { .LET(name: Ident(n), value: v, in: e) }
+    static func f(_ n: String, _ a: [String], _ b: T, in e: T) -> T  { .LETREC(name: Ident(n), args: a.map {Ident($0)}, body: b, in: e) }
+    static func c(_ p: T, _ t: T, _ f: T) -> T { .COND(pred: p, ifthen: t, ifelse: f) }
+
+    static func p(_ p: String, _ l: T, _ r: T) -> T { .CMP(pred: p, lhs: l, rhs: r) }
+    static func a(_ l: T, _ r: T) -> T { .ADD(lhs: l, rhs: r) }
+    static func x(_ f: T, _ a: [T]) -> T { .APP(fn: f, args: a) }
 
     func eq(_ ch: String) -> Bool {
         if case .punct(let x) = self { return x == ch } else { return false }
@@ -87,10 +119,10 @@ public indirect enum Syntax: Equatable, CustomStringConvertible {
         case .MUL(let x, let y): return "(* \(x) \(y))"
         case .DIV(let x, let y): return "(/ \(x) \(y))"
         case .LET(let x, let y, let z): return "(let (\(x) \(y)) \(z))"
-        case .LETREC(let x, let y): return "(let rec \(x) \(y))"
+        case .LETREC(let n, let a, let b, let e): return "(let rec \(n) \(a.map(\.name).joined(separator: " ")) \(b) \(e))"
         case .APP(let x, let y): return "(\(x) \(y.map(\.description).joined(separator: " ")))"
         case .COND(let c, let t, let f): return "(cond \(c) \(t) \(f))"
-        case .CMP(let c, let l, let r): return "(\(c.asString!) \(l) \(r))"
+        case .CMP(let c, let l, let r): return "(\(c) \(l) \(r))"
         case .SEMICOLON: return ";"
 
         case .punct(let x): return "(punct \(x))"
@@ -109,14 +141,14 @@ public class Parser {
         "add": .sequence([.ref("mul"), .zeroMore([.terminal(/[\+\-]/, word), .ref("mul")], thru)],
                          { xs in var r = xs[0]
                              for i in stride(from: 1, to: xs.count, by: 2) {
-                                 if xs[i].eq("+") { r = .ADD(r, xs[i + 1]) } else { r = .SUB(r, xs[i + 1]) }
+                                 if xs[i].eq("+") { r = .ADD(lhs: r, rhs: xs[i + 1]) } else { r = .SUB(lhs: r, rhs: xs[i + 1]) }
                              }
                              return [r]
                          }),
         "mul": .sequence([.ref("app"), .zeroMore([.terminal(/[\*\/]/, word), .ref("app")], { $0 })],
                          { xs in var r = xs[0]
                              for i in stride(from: 1, to: xs.count, by: 2) {
-                                 if xs[i].eq("*") { r = .MUL(r, xs[i + 1]) } else { r = .DIV(r, xs[i + 1]) }
+                                 if xs[i].eq("*") { r = .MUL(lhs: r, rhs: xs[i + 1]) } else { r = .DIV(lhs: r, rhs: xs[i + 1]) }
                              }
                              return [r]
                          }),
@@ -124,19 +156,19 @@ public class Parser {
                              .ref("ident"), .onePlus([.ref("ident")], { [.composite($0)] }),
                              .terminal(/=/, word), .ref("expr"),
                              .terminal(/in\b/, word), .ref("expr")],
-                            { xs in [.LETREC(Fundef(xs[2].asString!, xs[3].asArray!, xs[5]), xs[7])] }),
+                            { xs in [.LETREC(name: Ident(xs[2].asString!), args: xs[3].asArray!.map{Ident($0.asString!)}, body: xs[5], in: xs[7])] }),
         "letvar": .sequence([.terminal(/let\b/, word), .ref("ident"),
                              .terminal(/=/, word), .ref("expr"),
                              .terminal(/in\b/, word), .ref("expr")],
-                            { xs in [.LET(Ident(xs[1].asString!), xs[3], xs[5])] }),
+                            { xs in [.LET(name: Ident(xs[1].asString!), value: xs[3], in: xs[5])] }),
         "cond": .sequence([.terminal(/if\b/, word), .ref("cmpexpr"),
                            .terminal(/then\b/, word), .ref("expr"),
                            .terminal(/else\b/, word), .ref("expr")],
-                          { xs in return [.COND(xs[1], xs[3], xs[5])] }),
+                          { xs in return [.COND(pred: xs[1], ifthen: xs[3], ifelse: xs[5])] }),
         "cmpexpr": .sequence([.ref("app"), .opt([.sequence([.terminal(/=|!=|<=|>=|<|>/, word), .ref("app")], thru)], thru)],
-                             { xs in if xs.count == 1 { xs } else { [.CMP(xs[1], xs[0], xs[2])] } }),
+                             { xs in if xs.count == 1 { xs } else { [.CMP(pred: xs[1].asString!, lhs: xs[0], rhs: xs[2])] } }),
         "app": .sequence([.ref("atom"), .zeroMore([.ref("atom")], thru)], { xs in
-            if xs.count == 1 { xs } else { [.APP(xs[0], [Syntax](xs[1...]))] } }),
+            if xs.count == 1 { xs } else { [.APP(fn: xs[0], args: [Syntax](xs[1...]))] } }),
         "atom": .choice([.ref("float"), .ref("int"), .ref("unit"), .ref("paren"), .ref("bool"), .ref("ident")], thru),
         "paren": .sequence([.terminal(/\(/, word), .ref("expr"), .terminal(/\)/, word)], { [$0[1]] }),
         "unit": .terminal(/\(\)/, { _ in .UNIT }),
@@ -155,83 +187,81 @@ public class Parser {
 }
 
 struct Typing {
-
-    // let rec g env e = (* 型推論ルーチン (caml2html: typing_g) *)
-//    func g(_ env: inout [String: Ty], _ e: Syntax) -> Ty {
-//        switch e {
-//        case .UNIT: return .UNIT
-//        case .BOOL(_): return .BOOL
-//        case .INT(_): return .INT
-//        case .FLOAT(_): return .FLOAT
-//
-//        case .ADD(let e1, let e2):
-//            return .INT
-//        case .LET(let id, let e1, let e2): // unify t (g env e1)
-//            env[id.name] = id.t
-//            return g(&env, e2)
-//        }
-//    }
-
-    func occur(_ r1: Ty, in r2: Ty) -> Bool {
+    var env: [String: Typ] = [:]
+    init(_ ast: Syntax) {
+        var env: [String: Typ] = [:]
+        unify(.UNIT, infer(&env, ast))
+        //extenv = extenv.mapValues(deref_typ)
+        //return deref_term(ast)
+        self.env = env
+    }
+    func occur(_ r1: Typ, in r2: Typ) -> Bool {
         switch r2 {
         case .FUN(let t2s, let t2): return occur(r1, in: t2) || t2s.contains { occur(r1, in: $0) }
-        case .VAR(let name): if name != nil { return name == r1 } else { return false }
+//        case .VAR(let name): if name != nil { return name == r1 } else { return false }
         default: return false
         }
     }
-    func unify(_ t1: Ty, _ t2: Ty) {
-        //    func unify(_ t1: Ty, _ t2: Ty) -> Bool {
-        //        switch (t1, t2) {
-        //        case (.UNIT, .UNIT): return true
-        //        case (.BOOL, .BOOL): return true
-        //        case (.INT, .INT): return true
-        //        case (.FLOAT, .FLOAT): return true
-        //        case (.FUN(let t1s, let t1), .FUN(let t2s, let t2)): return unify(t1, t2) && zip(t1s, t2s).allSatisfy { self.unify($0, $1) }
-        //        case (.VAR(let t1), .VAR(nil)):
-        //        case (.VAR(let t1), .VAR(let t2)): return t1 == t2
-        //        default: return false
-        //        }
-        //    }
-    }
-    func infer(_ env: inout [String: Ty], _ e: Syntax) -> Ty {
-        return .UNIT
-    }
-    func deref_typ(_ t: Ty) -> Ty {
-        switch t {
-        case .FUN(let t1s, let t2): return .FUN(t1s, t2)
-        case .VAR(let name): if let t = name { return deref_typ(t) } else { return .INT }
-        default: return t
+    func unify(_ a: Typ, _ b: Typ) {
+        switch (a, b) {
+        case (.VAR(_), .VAR(_)): break
+        case (.VAR(let l), _): l.update(b)
+        case (_, .VAR(let r)): r.update(a)
+        default: break
         }
     }
-    func deref_term(_ e: Syntax) -> Syntax {
-        switch e {
-        case .ADD(let e1, let e2): return .ADD(deref_term(e1), deref_term(e2))
-        case .LET(let xt, let e1, let e2): return .LET(Ident(xt.name, deref_typ(xt.t)), deref_term(e1), deref_term(e2))
-        default: return e
+    func infer(_ env: inout [String: Typ], _ s: Syntax) -> Typ {
+        switch s {
+        case .UNIT: return .UNIT
+        case .BOOL: return .BOOL
+        case .INT: return .INT
+        case .VAR(let x): return env[x] ?? Typ.newvar()
+        case .LET(let n, let v, let e):
+            let t = infer(&env, v)
+            env[n.name] = t
+            n.update(t)
+            return infer(&env, e)
+        case .LETREC(let n, let a, let b, let e):
+            var cl = env
+            let at = a.map { let t = Typ.newvar(); cl[$0.name] = t; return t }
+            let bt = infer(&cl, b)
+            let t = Typ.FUN(at, bt)
+            cl[n.name] = t
+            env[n.name] = t
+            n.update(t)
+            return infer(&cl, e)
+        case .COND(_, let t, let e): let tt = infer(&env, t); let te = infer(&env, e); return infer(&env, t)
+        case .CMP: return .BOOL
+        case .ADD(let l, let r): unify(.INT, infer(&env, l)); unify(.INT, infer(&env, r)); return .INT
+        case .APP(let f, let a): _ = a.map {infer(&env, $0)}; return infer(&env, f)
+
+        case .FLOAT: return .FLOAT
+        case .SEMICOLON: return .UNIT
+        case .SUB(let l, let r): unify(.INT, infer(&env, l)); unify(.INT, infer(&env, r)); return .INT
+        case .MUL(let l, let r): unify(.INT, infer(&env, l)); unify(.INT, infer(&env, r)); return .INT
+        case .DIV(let l, let r): unify(.INT, infer(&env, l)); unify(.INT, infer(&env, r)); return .INT
+        case .punct: return .UNIT
+        case .composite: return .UNIT
         }
-    }
-    func f(_ ast: Syntax) -> Syntax {
-        var env: [String: Ty] = [:]
-        unify(.UNIT, infer(&env, ast))
-        //extenv = extenv.mapValues(deref_typ)
-        return deref_term(ast)
     }
 }
 struct MinCaml {
     let ps = Parser()
     init() { }
 
-
     func handle(_ input: String) -> [String]? {
         let r = ps.parse(input, "exprs")
         if let ast = r.ast {
-            return ast.map(\.description)
+            let x = Typing(ast.first!)
+            var out = ast.map(\.description)
+            out.append(x.env.description)
+            return out
         } else { return nil }
 
         //let ast = ps.parser.parse("8+2*3-1", "expr")
         //let r = ps.parser.parseRule(" 8  - 2   * ( 5 +  3 ) *   4", .ref("add"))
         //let r = ps.parser.parseRule("let x = 123 in let y = 23 in x - y + 1", .ref("expr"))
-        //let r = ps.parser.parseRule("let rec f x = x in f 100", .ref("letrec"))
+        //let r = ps.parser.parseRule("let rec f x = x + 1 in f 100", .ref("letrec"))
     }
 }
 

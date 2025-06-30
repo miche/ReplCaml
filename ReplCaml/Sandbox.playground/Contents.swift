@@ -1,6 +1,8 @@
 import Foundation
 
-class Opt: Equatable, CustomStringConvertible {
+//let a = Optional<Int>.some(1)
+
+class Op: Equatable, CustomStringConvertible {
     typealias T = Tx
     private var v: T?
     init(v: T? = nil) {
@@ -9,7 +11,7 @@ class Opt: Equatable, CustomStringConvertible {
     func update(_ v: T) {
         self.v = v
     }
-    public static func == (lhs: Opt, rhs: Opt) -> Bool {
+    public static func == (lhs: Op, rhs: Op) -> Bool {
         return lhs.v == rhs.v
     }
     var description: String { return v?.description ?? "#undef" }
@@ -19,9 +21,9 @@ indirect enum Tx: Equatable, CustomStringConvertible {
     case BOOL
     case INT
     case FLOAT
-    case VAR(Opt)
+    case VAR(Op)
     case FUN([Self], Self)
-    static func newvar() -> Self { Tx.VAR(Opt(v: nil)) }
+    static func newvar() -> Self { Tx.VAR(Op(v: nil)) }
     var description: String {
         switch self {
         case .UNIT: return "()"
@@ -198,9 +200,9 @@ func infer(_ env: inout [String: Ty], _ x: Syntax) -> Ty {
     default : return .UNIT
     }
 }
-let a = Syntax.INT(10)
-let b = Syntax.FLOAT(3.14)
-var env: [String: Ty] = [:]
+//let a = Syntax.INT(10)
+//let b = Syntax.FLOAT(3.14)
+//var env: [String: Ty] = [:]
 //infer(&env, .UNIT)
 //infer(&env, a)
 //infer(&env, b)
@@ -211,10 +213,10 @@ var env: [String: Ty] = [:]
 //                      .ADD(.VAR("a"), .VAR("b")))))
 //var s = Syntax.LETREC(Fundef("f", [.VAR("x")], .ADD(.VAR("x"), .INT(1))), .APP(.VAR("f"), [.INT(10)]))
 //infer(&env, s)
-var l = Syntax.LET(Ident("x"), .FLOAT(1), .VAR("x"))
-infer(&env, l)
-l
-env
+//var l = Syntax.LET(Ident("x"), .FLOAT(1), .VAR("x"))
+//infer(&env, l)
+//l
+//env
 
 
 func eval(_ x: Syntax, _ env: inout [String: Syntax]) -> Int {
