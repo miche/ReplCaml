@@ -1,5 +1,14 @@
 import Foundation
 
+let k: KNormalT = .f("f", ["t"], .a("s", "t"), in: .x("f", ["y"]))
+print(k.fv)
+
+func test5() {
+    let k: KNormalT = .d("x", .i(3), in: .a("x", "y"))
+  //  let k: KNormalT = .LET(IdentX("x", .INT), .INT(3), .ADD("x", "y"))
+    print(k.fv)
+}
+test5()
 
 func test4() {
     let s: Syntax = .f("f", ["x"], .a(.v("x"), .i(123)), in: .d("x", .i(456), in: .x(.v("f"), [.v("x")])))

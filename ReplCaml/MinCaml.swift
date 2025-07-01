@@ -1,8 +1,9 @@
 import Foundation
 
-public class Id {
+public final class Id {
     public typealias T = String
     private static var counter = 0
+
     init() {}
     static func genid(_ s: String) -> T {
         counter += 1
@@ -14,15 +15,32 @@ public class Id {
     }
 }
 
+public final class Opt: Equatable, CustomStringConvertible {
+    typealias T = Typ
+
+    var v: T?
+    init(_ v: T? = nil) {
+        self.v = v
+    }
+    func update(_ v: T) {
+        self.v = v
+    }
+    public static func == (lhs: Opt, rhs: Opt) -> Bool {
+        return lhs.v == rhs.v
+    }
+    public var description: String { return v?.description ?? "#undef" }
+}
+
 public indirect enum Typ: Equatable, CustomStringConvertible {
-    typealias T = Self
+    public typealias T = Typ
+
     case UNIT
     case BOOL
     case INT
     case FLOAT
     case VAR(Opt)
     case FUN([Self], Self)
-    public func deref() -> Typ {
+    public func deref() -> T {
         if case .VAR(let opt) = self {
             if let v = opt.v {
                 return v
@@ -30,7 +48,7 @@ public indirect enum Typ: Equatable, CustomStringConvertible {
         }
         return self
     }
-    static func newvar() -> Self { Typ.VAR(Opt(nil)) }
+    static func newvar() -> T { T.VAR(Opt(nil)) }
     public var description: String {
         switch self {
         case .UNIT: return "()"
@@ -54,20 +72,6 @@ public indirect enum Typ: Equatable, CustomStringConvertible {
 }
 
 /// -(String)-> Parser -(Syntax)-> Typing -(Syntax)->
-public final class Opt: Equatable, CustomStringConvertible {
-    typealias T = Typ
-    var v: T?
-    init(_ v: T? = nil) {
-        self.v = v
-    }
-    func update(_ v: T) {
-        self.v = v
-    }
-    public static func == (lhs: Opt, rhs: Opt) -> Bool {
-        return lhs.v == rhs.v
-    }
-    public var description: String { return v?.description ?? "#undef" }
-}
 
 public class Ident: Equatable, CustomStringConvertible {
     var name: String
@@ -93,6 +97,7 @@ public class Ident: Equatable, CustomStringConvertible {
 
 public indirect enum Syntax: Equatable, CustomStringConvertible {
     public typealias T = Self
+
     case UNIT
     case BOOL(Bool)
     case INT(Int)
@@ -225,8 +230,11 @@ public class Parser {
 }
 
 public struct Typing {
+    public typealias T = Syntax
+    public typealias E = [String: Typ]
+
     public var env: [String: Typ] = [:]
-    init(_ ast: Syntax) {
+    init(_ ast: T) {
         var env: [String: Typ] = [:]
         unify(.UNIT, infer(&env, ast))
         //extenv = extenv.mapValues(deref_typ)
@@ -248,7 +256,7 @@ public struct Typing {
         default: break
         }
     }
-    func infer(_ env: inout [String: Typ], _ s: Syntax) -> Typ {
+    func infer(_ env: inout [String: Typ], _ s: T) -> Typ {
         switch s {
         case .UNIT: return .UNIT
         case .BOOL: return .BOOL
@@ -301,9 +309,10 @@ public struct IdentX: Equatable, CustomStringConvertible {
     public var description: String { "\(name):\(typ)" }
 }
 
-public indirect enum KNormalT: CustomStringConvertible {
-    public typealias T = Self
+public indirect enum KNormalT: Equatable, CustomStringConvertible {
+    public typealias T = KNormalT
     public typealias I = Id.T
+    
     case UNIT
     case INT(Int)
     case FLOAT(Double)
@@ -333,12 +342,37 @@ public indirect enum KNormalT: CustomStringConvertible {
         case .APP(let f, let a): return "(\(f) \(a.map(\.description).joined(separator: " ")))"
         }
     }
+
+    public static func u() -> T { .UNIT }
+    public static func i(_ n: Int) -> T { .INT(n) }
+    public static func v(_ s: I) -> T { .VAR(s) }
+    public static func d(_ n: I, _ v: T, in e: T) -> T  { .LET(IdentX(n, .INT), v, e) }
+    public static func f(_ n: I, _ a: [I], _ b: T, in e: T) -> T  { .LETREC(IdentX(n, .INT), a.map {IdentX($0, .INT)}, b, e) }
+
+    public static func a(_ l: I, _ r: I) -> T { .ADD(l, r) }
+    public static func m(_ l: I, _ r: I) -> T { .MUL(l, r) }
+    public static func x(_ f: I, _ a: [I]) -> T { .APP(f, a) }
+
+    public var fv: Set<String> {
+        switch self {
+        case .ADD(let l, let r), .MUL(let l, let r): return [l, r]
+        case .VAR(let x): return [x]
+        case .LET(let xt, let v, let e): return v.fv.union(e.fv.subtracting([xt.name]))
+        case .LETREC(let xt, let a, let b, let e):
+            return b.fv.subtracting(a.map(\.name)).union(e.fv).subtracting([xt.name])
+        case .APP(let f, let a): return Set<String>(a).union([f])
+        default: return []
+        }
+    }
 }
 
 public struct KNormal {
-    public var env: [String: Typ] = [:]
-    public var k = KNormalT.UNIT
-    func insert_let(_ et: (e: KNormalT, t: Typ), _ k: (String)->(KNormalT, Typ)) -> (KNormalT, Typ) {
+    public typealias T = KNormalT
+    public typealias E = [String: Typ]
+
+    public var env: E = [:]
+    public var k = T.UNIT
+    func insert_let(_ et: (e: T, t: Typ), _ k: (String)->(T, Typ)) -> (T, Typ) {
         if case .VAR(let x) = et.e { return k(x) }
         else {
             let x = Id.gentmp(et.t)
@@ -346,7 +380,7 @@ public struct KNormal {
             return (.LET(IdentX(x, et.t), et.e, e), t)
         }
     }
-    func g(_ env: inout [String: Typ], _ s: Syntax) -> (KNormalT, Typ) {
+    func g(_ env: inout E, _ s: Syntax) -> (T, Typ) {
         switch s {
         case .UNIT: return (.UNIT, .UNIT)
         case .BOOL(let b): return (.INT(b ? 1 : 0), .INT)
@@ -379,7 +413,7 @@ public struct KNormal {
             let g_e1 = g(&env, fn)
             if case .FUN(_, let t) = g_e1.1 {
                 return insert_let(g_e1) { f in
-                    func bind(_ xs: [String], _ rs: [Syntax]) -> (KNormalT, Typ) {
+                    func bind(_ xs: [String], _ rs: [Syntax]) -> (T, Typ) {
                         if rs.isEmpty { return (.APP(f, xs), t) }
                         return insert_let(g(&env, rs.first!)) { x in
                             return bind(xs + [x], [Syntax](rs.dropFirst()))
@@ -396,7 +430,7 @@ public struct KNormal {
         }
     }
     init(_ e: Syntax) {
-        var env: [String: Typ] = [:]
+        var env: E = [:]
         let kt = g(&env, e)
         self.env = env
         self.k = kt.0
@@ -404,17 +438,23 @@ public struct KNormal {
 }
 
 public struct Alpha {
-    public var env: [String: String] = [:]
-    public var k = KNormalT.UNIT
-    init(_ k: KNormalT) {
-        var env: [String: String] = [:]
+    public typealias T = KNormalT
+    public typealias E = [String: String]
+
+    public var env: E = [:]
+    public var k = T.UNIT
+    init(_ k: T, _ env0: E = [:]) {
+        var env = env0
         self.k = g(&env, k)
         self.env = env
     }
-    func g(_ env: inout [String: String], _ k: KNormalT) -> KNormalT {
+    func find(_ x: String, _ env: E) -> String {
+        return env[x] ?? x
+    }
+    func g(_ env: inout E, _ k: T) -> T {
         switch k {
-        case .ADD(let lhs, let rhs): return .ADD(env[lhs]!, env[rhs]!)
-        case .MUL(let lhs, let rhs): return .MUL(env[lhs]!, env[rhs]!)
+        case .ADD(let lhs, let rhs): return .ADD(find(lhs, env), find(rhs, env))
+        case .MUL(let lhs, let rhs): return .MUL(find(lhs, env), find(rhs, env))
         case .VAR(let x): return .VAR(env[x]!)
         case .LET(let xt, let v, let e):
             let x = Id.genid(xt.name)
@@ -437,16 +477,17 @@ public struct Alpha {
 public struct Beta {
     public typealias T = KNormalT
     public typealias E = [String: String]
+
     public var env: E = [:]
-    public var k = KNormalT.UNIT
-    init(_ k: KNormalT) {
-        var env: [String: String] = [:]
+    public var k = T.UNIT
+    init(_ k: T) {
+        var env: E = [:]
         self.k = g(&env, k)
         self.env = env
     }
     func find(_ x: String, _ env: E) -> String { env[x] ?? x }
 
-    func g(_ env: inout E, _ k: KNormalT) -> KNormalT {
+    func g(_ env: inout E, _ k: T) -> T {
         switch k {
         case .ADD(let l, let r): return .ADD(find(l, env), find(r, env))
         case .MUL(let l, let r): return .MUL(find(l, env), find(r, env))
@@ -467,16 +508,17 @@ public struct Beta {
     }
 }
 
-struct Assoc {  // re-association actually
+public struct Assoc {  // re-association actually
     public typealias T = KNormalT
-    public var k = KNormalT.UNIT
-    init(_ k: KNormalT) {
+    public var k = T.UNIT
+
+    init(_ k: T) {
         self.k = f(k)
     }
-    func f(_ k: KNormalT) -> KNormalT {
+    func f(_ k: T) -> T {
         switch k {
         case .LET(let xt, let v, let e2):
-            func insert(_ e: KNormalT) -> KNormalT {
+            func insert(_ e: T) -> T {
                 switch e {
                 case .LET(let yt, let e3, let e4): return .LET(yt, e3, insert(e4))
                 case .LETREC(let yt, let a, let b, let e): return .LETREC(yt, a, b, insert(e))
@@ -490,46 +532,107 @@ struct Assoc {  // re-association actually
     }
 }
 
-struct Inline {
+public struct Inline {
     public typealias T = KNormalT
-    public typealias E = [String: String]
+    public typealias E = [String: ([String], KNormalT)]  // args, body
+
     public var env: E = [:]
-    public var k = KNormalT.UNIT
-    init(_ k: KNormalT) {
-        var env: [String: String] = [:]
+    public var k = T.UNIT
+    var threshold: Int
+
+    init(_ k: T, _ threshold: Int = 10) {
+        var env: E = [:]
+        self.threshold = threshold
         self.k = g(&env, k)
         self.env = env
     }
-    func g(_ env: inout E, _ k: KNormalT) -> KNormalT {
-        return k
+    func size(of k:T) -> Int {
+        switch k {
+        case .LET(_, let v, let e): return 1 + size(of: e) + size(of: v)
+        case .LETREC(_, _, let b, let e): return 1 + size(of: b) + size(of: e)
+        default: return 1
+        }
+    }
+    func g(_ env: inout E, _ k: T) -> T {
+        switch k {
+        case .LET(let xt, let v, let e): return .LET(xt, g(&env, v), g(&env, e))
+        case .LETREC(let xt, let a, let b, let e):
+            print("\(xt.name): size \(size(of: b))")
+            if size(of: b) < self.threshold { env[xt.name] = (a.map(\.name), b) }
+            var cl = env
+            return .LETREC(xt, a, g(&cl, b), g(&cl, e))
+        case .APP(let f, let a):
+            guard let (zs, e) = env[f] else { return k }
+            var cl: Alpha.E = [:]
+            zip(zs, a).forEach { cl[$0] = $1 }
+            let k = Alpha(e, cl)
+            return k.k
+        default: return k
+        }
     }
 }
+
 struct ConstFold {
     public typealias T = KNormalT
-    public typealias E = [String: String]
+    public typealias E = [String: T]
     public var env: E = [:]
     public var k = KNormalT.UNIT
     init(_ k: KNormalT) {
-        var env: [String: String] = [:]
+        var env: E = [:]
         self.k = g(&env, k)
         self.env = env
     }
-    func g(_ env: inout E, _ k: KNormalT) -> KNormalT {
-        return k
+    func findi(_ x: String, _ env: E) -> Int? {
+        guard let t = env[x] else { return nil }
+        if case .INT(let i) = t { return i } else { return nil }
+    }
+    func g(_ env: inout E, _ k: T) -> T {
+        switch k {
+        case .VAR(let x): if let i = findi(x, env) { return .INT(i) } else { return k }
+        case .ADD(let lhs, let rhs): let l = findi(lhs, env), r = findi(rhs, env)
+            if l != nil && r != nil { return .INT(l! + r!) } else { return k }
+        case .MUL(let lhs, let rhs): let l = findi(lhs, env), r = findi(rhs, env)
+            if l != nil && r != nil { return .INT(l! * r!) } else { return k }
+        case .LET(let xt, let v, let e):
+            let e1 = g(&env, v)
+            env[xt.name] = e1
+            let e2 = g(&env, e)
+            return .LET(xt, e1, e2)
+        case .LETREC(let xt, let a, let b, let e):
+            return .LETREC(xt, a, g(&env, b), g(&env, e))
+        default: return k
+        }
     }
 }
-struct Elim {
+
+public struct Elim {
     public typealias T = KNormalT
-    public typealias E = [String: String]
-    public var env: E = [:]
-    public var k = KNormalT.UNIT
-    init(_ k: KNormalT) {
-        var env: [String: String] = [:]
-        self.k = g(&env, k)
-        self.env = env
+
+    public var k = T.UNIT
+    init(_ k: T) {
+        self.k = f(k)
     }
-    func g(_ env: inout E, _ k: KNormalT) -> KNormalT {
-        return k
+    func hasSideEffect(_ k: T) -> Bool {
+        switch k {
+        case .LET(_, let v, let e): return hasSideEffect(v) || hasSideEffect(e)
+        case .LETREC(_, _, _, let e): return hasSideEffect(e)
+        case .APP: return true
+        default: return false
+        }
+    }
+    func f(_ k: T) -> T {
+        switch k {
+        case .LET(let xt, let v, let e):
+            let e1 = f(v)
+            let e2 = f(e)
+            if hasSideEffect(e1) || e2.fv.contains(xt.name) { return .LET(xt, e1, e2) }
+            else { return e2 }
+        case .LETREC(let xt, let a, let b, let e):
+            let e2 = f(e)
+            if e2.fv.contains(xt.name) { return .LETREC(xt, a, f(b), e2) }
+            else { return e2 }
+        default: return k
+        }
     }
 }
 
@@ -551,6 +654,7 @@ struct MinCaml {
        (Simm.f
         (Virtual.f
          (Closure.f
+
           (iter !limit
             -- Elim.f (ConstFold.f (Inline.f (Assoc.f (Beta.f
            (Alpha.f
@@ -565,25 +669,28 @@ struct MinCaml {
         asts.forEach { ast in
             let x1 = Typing(ast)
             out.append(ast.description)
-            out.append(x1.env.description)
+//            out.append(x1.env.description)
             let x2 = KNormal(ast)
             out.append(x2.k.description)
-            out.append(x2.env.description)
+//            out.append(x2.env.description)
             let x3 = Alpha(x2.k)
             out.append(x3.k.description)
-            out.append(x3.env.description)
+//            out.append(x3.env.description)
             let x4 = Beta(x3.k)
             out.append(x4.k.description)
-            out.append(x4.env.description)
+//            out.append(x4.env.description)
             let x5 = Assoc(x4.k)
             out.append(x5.k.description)
+            let x6 = Inline(x5.k)
+            out.append(x6.k.description)
+            out.append(x6.env.description)
+            let x7 = ConstFold(x6.k)
+            out.append(x7.k.description)
+            out.append(x7.env.description)
+            let x8 = Elim(x7.k)
+            out.append(x8.k.description)
         }
         return out
-
-        //let ast = ps.parser.parse("8+2*3-1", "expr")
-        //let r = ps.parser.parseRule(" 8  - 2   * ( 5 +  3 ) *   4", .ref("add"))
-        //let r = ps.parser.parseRule("let x = 123 in let y = 23 in x - y + 1", .ref("expr"))
-        //let r = ps.parser.parseRule("let rec f x = x + 1 in f 100", .ref("letrec"))
     }
 }
 
