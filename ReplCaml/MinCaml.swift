@@ -467,10 +467,97 @@ public struct Beta {
     }
 }
 
+struct Assoc {  // re-association actually
+    public typealias T = KNormalT
+    public var k = KNormalT.UNIT
+    init(_ k: KNormalT) {
+        self.k = f(k)
+    }
+    func f(_ k: KNormalT) -> KNormalT {
+        switch k {
+        case .LET(let xt, let v, let e2):
+            func insert(_ e: KNormalT) -> KNormalT {
+                switch e {
+                case .LET(let yt, let e3, let e4): return .LET(yt, e3, insert(e4))
+                case .LETREC(let yt, let a, let b, let e): return .LETREC(yt, a, b, insert(e))
+                default: return .LET(xt, e, f(e2))
+                }
+            }
+            return insert(f(v))
+        case .LETREC(let xt, let a, let b, let e): return .LETREC(xt, a, f(b), f(e))
+        default: return k
+        }
+    }
+}
+
+struct Inline {
+    public typealias T = KNormalT
+    public typealias E = [String: String]
+    public var env: E = [:]
+    public var k = KNormalT.UNIT
+    init(_ k: KNormalT) {
+        var env: [String: String] = [:]
+        self.k = g(&env, k)
+        self.env = env
+    }
+    func g(_ env: inout E, _ k: KNormalT) -> KNormalT {
+        return k
+    }
+}
+struct ConstFold {
+    public typealias T = KNormalT
+    public typealias E = [String: String]
+    public var env: E = [:]
+    public var k = KNormalT.UNIT
+    init(_ k: KNormalT) {
+        var env: [String: String] = [:]
+        self.k = g(&env, k)
+        self.env = env
+    }
+    func g(_ env: inout E, _ k: KNormalT) -> KNormalT {
+        return k
+    }
+}
+struct Elim {
+    public typealias T = KNormalT
+    public typealias E = [String: String]
+    public var env: E = [:]
+    public var k = KNormalT.UNIT
+    init(_ k: KNormalT) {
+        var env: [String: String] = [:]
+        self.k = g(&env, k)
+        self.env = env
+    }
+    func g(_ env: inout E, _ k: KNormalT) -> KNormalT {
+        return k
+    }
+}
+
+
 struct MinCaml {
     let ps = Parser()
     init() { }
 
+    /*
+     let rec iter n e = (* 最適化処理をくりかえす *)
+       Format.eprintf "iteration %d@." n;
+       if n = 0 then e else
+         let e' = Elim.f (ConstFold.f (Inline.f (Assoc.f (Beta.f e)))) in
+       if e = e' then e else
+         iter (n - 1) e'
+
+     Emit.f outchan
+      (RegAlloc.f
+       (Simm.f
+        (Virtual.f
+         (Closure.f
+          (iter !limit
+            -- Elim.f (ConstFold.f (Inline.f (Assoc.f (Beta.f
+           (Alpha.f
+            (KNormal.f
+             (Typing.f
+              (Parser.exp Lexer.token l)))))))))
+     */
     func handle(_ input: String) -> [String]? {
         let r = ps.parse(input, "exprs")
         guard let asts = r.ast else { return nil }
@@ -488,6 +575,8 @@ struct MinCaml {
             let x4 = Beta(x3.k)
             out.append(x4.k.description)
             out.append(x4.env.description)
+            let x5 = Assoc(x4.k)
+            out.append(x5.k.description)
         }
         return out
 
