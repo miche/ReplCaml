@@ -10,7 +10,7 @@ public class Id {
     }
     static func gentmp(_ t: Typ) -> T {
         counter += 1
-        return "T\(t.rep)\(Id.counter)"
+        return "$\(t.rep)\(Id.counter)"
     }
 }
 public final class Opt: Equatable, CustomStringConvertible {
@@ -27,7 +27,6 @@ public final class Opt: Equatable, CustomStringConvertible {
     }
     public var description: String { return v?.description ?? "#undef" }
 }
-
 public indirect enum Typ: Equatable, CustomStringConvertible {
     typealias T = Self
     case UNIT
@@ -51,8 +50,8 @@ public indirect enum Typ: Equatable, CustomStringConvertible {
         case .BOOL: return "Bool"
         case .INT: return "Int"
         case .FLOAT: return "Float"
-        case .VAR(let v): return v.description
-        case .FUN(let a, let r): return "(\(a.map(\.description).joined(separator: ", ")))->\(r.description)"
+        case .VAR(let v): return "Var(\(v))"
+        case .FUN(let a, let r): return "(\(a.map(\.description).joined(separator: " ")))->\(r.description)"
         }
     }
     var rep: String {
@@ -154,8 +153,8 @@ public indirect enum Syntax: Equatable, CustomStringConvertible {
         case .SUB(let x, let y): return "(- \(x) \(y))"
         case .MUL(let x, let y): return "(* \(x) \(y))"
         case .DIV(let x, let y): return "(/ \(x) \(y))"
-        case .LET(let x, let y, let z): return "(let (\(x) \(y)) \(z))"
-        case .LETREC(let n, let a, let b, let e): return "(let rec \(n) \(a.map(\.name).joined(separator: " ")) \(b) \(e))"
+        case .LET(let x, let y, let z): return "(let \(x)=\(y) in \(z))"
+        case .LETREC(let n, let a, let b, let e): return "(let rec \(n) \(a.map(\.description).joined(separator: " "))=\(b) in \(e))"
         case .APP(let x, let y): return "(\(x) \(y.map(\.description).joined(separator: " ")))"
         case .COND(let c, let t, let f): return "(cond \(c) \(t) \(f))"
         case .CMP(let c, let l, let r): return "(\(c) \(l) \(r))"
@@ -188,15 +187,15 @@ public indirect enum KNormalT: CustomStringConvertible {
     public var description: String {
         switch self {
         case .UNIT: return "()"
-        case .INT(let x): return "\(x)i"
+        case .INT(let x): return "\(x)"
         case .FLOAT(let x): return "\(x)f"
         case .ADD(let l, let r): return "(+ \(l) \(r))"
         case .MUL(let l, let r): return "(* \(l) \(r))"
         case .IFEQ(let l, let r, let a, let b): return "(ifeq \(l) \(r) \(a) \(b))"
         case .LET(let n, let v, let e): return "(let \(n)=\(v) in \(e))"
         case .VAR(let n): return "(var \(n))"
-        case .LETREC(let n, let a, let b, let e): return "(letrec \(n) \(a.map(\.description).joined(separator: " "))=\(b) in \(e))"
-        case .APP(let f, let a): return "(app \(f) \(a))"
+        case .LETREC(let n, let a, let b, let e): return "(let rec \(n) \(a.map(\.description).joined(separator: " "))=\(b) in \(e))"
+        case .APP(let f, let a): return "(\(f) \(a.map(\.description).joined(separator: " ")))"
         }
     }
 }
@@ -238,6 +237,7 @@ public struct KNormal {
             cl[xt.name] = xt.typ
             env[xt.name] = xt.typ
             let (e2, t2) = g(&cl, e)
+            debugPrint(a)
             a.forEach { cl[$0.name] = $0.typ }
             let (e1, t1) = g(&cl, b)
             return (.LETREC(xt, a, e1, e2), t2)
@@ -291,7 +291,7 @@ public class Parser {
                              return [r]
                          }),
         "letrec": .sequence([.terminal(/let\b/, word), .terminal(/rec\b/, word),
-                             .ref("ident"), .onePlus([.ref("ident")], { [.composite($0)] }),
+                             .ref("ident"), .onePlus([.ref("ident")], { [.composite($0)] }), // TODO: support ()
                              .terminal(/=/, word), .ref("expr"),
                              .terminal(/in\b/, word), .ref("expr")],
                             { xs in [.LETREC(name: Ident(xs[2].asString!), args: xs[3].asArray!.map{Ident($0.asString!)}, body: xs[5], in: xs[7])] }),
@@ -324,8 +324,8 @@ public class Parser {
     }
 }
 
-struct Typing {
-    var env: [String: Typ] = [:]
+public struct Typing {
+    public var env: [String: Typ] = [:]
     init(_ ast: Syntax) {
         var env: [String: Typ] = [:]
         unify(.UNIT, infer(&env, ast))
@@ -355,13 +355,13 @@ struct Typing {
         case .INT: return .INT
         case .VAR(let x): return env[x] ?? Typ.newvar()
         case .LET(let n, let v, let e):
-            let t = infer(&env, v)
+            let t = infer(&env, v).deref()
             env[n.name] = t
-            n.update(t)
+            n.typ = t
             return infer(&env, e)
         case .LETREC(let n, let a, let b, let e):
             var cl = env
-            let at = a.map { let t = Typ.newvar(); cl[$0.name] = t; return t }
+            let at = a.map { cl[$0.name] = $0.typ; return $0.typ }
             let bt = infer(&cl, b)
             let t = Typ.FUN(at.map {$0.deref()}, bt.deref())
             cl[n.name] = t
@@ -384,22 +384,23 @@ struct Typing {
     }
 }
 
-
 struct MinCaml {
     let ps = Parser()
     init() { }
 
     func handle(_ input: String) -> [String]? {
         let r = ps.parse(input, "exprs")
-        if let ast = r.ast {
-            let x = Typing(ast.first!)
-            var out = ast.map(\.description)
+        guard let asts = r.ast else { return nil }
+        var out: [String] = []
+        asts.forEach { ast in
+            let x = Typing(ast)
+            out.append(ast.description)
             out.append(x.env.description)
-            let y = KNormal(ast.first!)
+            let y = KNormal(ast)
             out.append(y.k.description)
             out.append(y.env.description)
-            return out
-        } else { return nil }
+        }
+        return out
 
         //let ast = ps.parser.parse("8+2*3-1", "expr")
         //let r = ps.parser.parseRule(" 8  - 2   * ( 5 +  3 ) *   4", .ref("add"))

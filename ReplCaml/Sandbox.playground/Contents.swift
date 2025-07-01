@@ -1,13 +1,18 @@
 import Foundation
 
+func test1() {
+    let s: Syntax = .d("a", .i(2), in:
+            .f("f", ["x"], .a(.m(.v("x"), .v("a")), .i(1)), in:
+                    .a(.x(.v("f"), [.i(3)]), .m(.v("a"), .i(5)))))
+    let t = Typing(s)
+    print(s)
+    let k = KNormal(s)
+    print(k.k)
 
-let s: Syntax = .d("a", .i(2), in:
-        .f("f", ["x"], .m(.v("x"), .v("a")), in:
-            .a(.x(.v("f"), [.i(3)]), .m(.v("a"), .i(5)))))
-let t = Typing(s)
-print(s)
-let k = KNormal(s)
-print(k.k)
+//    var e: [String: KNormalT] = [:]
+//    ev(k.k, &e)
+//    e
+}
 
 func ev(_ x: KNormalT, _ env: inout [String: KNormalT]) -> KNormalT {
     switch x {
@@ -24,9 +29,8 @@ func ev(_ x: KNormalT, _ env: inout [String: KNormalT]) -> KNormalT {
     default: return .UNIT
     }
 }
-var e: [String: KNormalT] = [:]
-ev(k.k, &e)
-e
+test1()
+
 
 
 func eval(_ x: Syntax, _ env: inout [String: Syntax]) -> Int {
