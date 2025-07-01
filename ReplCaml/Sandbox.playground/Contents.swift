@@ -1,5 +1,39 @@
 import Foundation
 
+
+func test4() {
+    let s: Syntax = .f("f", ["x"], .a(.v("x"), .i(123)), in: .d("x", .i(456), in: .x(.v("f"), [.v("x")])))
+    let t = Typing(s)
+    print(s)
+    let k = KNormal(s)
+    print(k.k)
+    let a = Alpha(k.k)
+    print(a.k)
+    print(a.env)
+}
+test4()
+
+func test3() {
+    let s: Syntax = .d("x", .i(123), in: .d("x", .i(456), in: .a(.v("x"), .v("x"))))
+    let t = Typing(s)
+    print(s)
+    let k = KNormal(s)
+    print(k.k)
+    let a = Alpha(k.k)
+    print(a.k)
+    print(a.env)
+}
+test3()
+
+func test2() {
+    let s: Syntax = .f("f", ["x", "y"], .a(.m(.v("x"), .v("y")), .i(1)), in: .x(.v("f"), [.i(2), .i(3)]))
+    let t = Typing(s)
+    print(s)
+    let k = KNormal(s)
+    print(k.k)
+}
+test2()
+
 func test1() {
     let s: Syntax = .d("a", .i(2), in:
             .f("f", ["x"], .a(.m(.v("x"), .v("a")), .i(1)), in:

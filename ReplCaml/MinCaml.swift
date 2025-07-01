@@ -230,14 +230,13 @@ public struct KNormal {
         case .LET(name: let xt, value: let v, in: let e):
             let (e1, t1) = g(&env, v)
             env[xt.name] = xt.typ
-            let (e2, t2) = g(&env, e)
+            let (e2, t2) = g(&env, e)   // BUG: need sub env, may be or not, seems ok by spec because of 'in'?
             return (.LET(xt, e1, e2), t2)
         case .LETREC(name: let xt, args: let a, body: let b, in: let e):
             var cl = env
             cl[xt.name] = xt.typ
             env[xt.name] = xt.typ
             let (e2, t2) = g(&cl, e)
-            debugPrint(a)
             a.forEach { cl[$0.name] = $0.typ }
             let (e1, t1) = g(&cl, b)
             return (.LETREC(xt, a, e1, e2), t2)
@@ -266,6 +265,37 @@ public struct KNormal {
         let kt = g(&env, e)
         self.env = env
         self.k = kt.0
+    }
+}
+
+public struct Alpha {
+    public var env: [String: String] = [:]
+    public var k = KNormalT.UNIT
+    init(_ k: KNormalT) {
+        var env: [String: String] = [:]
+        self.k = g(&env, k)
+        self.env = env
+    }
+    func g(_ env: inout [String: String], _ k: KNormalT) -> KNormalT {
+        switch k {
+        case .ADD(let lhs, let rhs): return .ADD(env[lhs]!, env[rhs]!)
+        case .MUL(let lhs, let rhs): return .MUL(env[lhs]!, env[rhs]!)
+        case .VAR(let x): return .VAR(env[x]!)
+        case .LET(let xt, let v, let e):
+            let x = Id.genid(xt.name)
+            env[xt.name] = x
+            return .LET(Ident(x, xt.typ), g(&env, v), g(&env, e))
+        case .LETREC(let xt, let a, let b, let e):
+            let x = Id.genid(xt.name)
+            env[xt.name] = x
+            var cl = env
+            var cl2 = env
+            let ys = a.map { let y = Id.genid($0.name); cl2[$0.name] = y; return Ident(y, $0.typ) }
+            return .LETREC(Ident(x, xt.typ), ys, g(&cl2, b), g(&cl, e))
+        case .APP(let f, let a): return .APP(env[f]!, a.map { env[$0]! })
+
+        default: return k
+        }
     }
 }
 
