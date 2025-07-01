@@ -2,6 +2,7 @@ import Foundation
 
 public final class Id {
     public typealias T = String
+    public typealias L = String
     private static var counter = 0
 
     init() {}
@@ -40,15 +41,7 @@ public indirect enum Typ: Equatable, CustomStringConvertible {
     case FLOAT
     case VAR(Opt)
     case FUN([Self], Self)
-    public func deref() -> T {
-        if case .VAR(let opt) = self {
-            if let v = opt.v {
-                return v
-            }
-        }
-        return self
-    }
-    static func newvar() -> T { T.VAR(Opt(nil)) }
+    static func gentyp() -> T { T.VAR(Opt(nil)) }
     public var description: String {
         switch self {
         case .UNIT: return "()"
@@ -78,7 +71,7 @@ public class Ident: Equatable, CustomStringConvertible {
     var typ: Typ
     init(_ name: String) {
         self.name = name
-        self.typ = Typ.newvar()
+        self.typ = Typ.gentyp()
     }
     init(_ name: String, _ typ: Typ) {
         self.name = name
@@ -234,13 +227,35 @@ public struct Typing {
     public typealias E = [String: Typ]
 
     public var env: [String: Typ] = [:]
+    public var s: T = .UNIT
     init(_ ast: T) {
         var env: [String: Typ] = [:]
         unify(.UNIT, infer(&env, ast))
         //extenv = extenv.mapValues(deref_typ)
-        //return deref_term(ast)
+        self.s = deref_term(ast)
         self.env = env
     }
+    func deref_typ(_ t: Typ) -> Typ {
+        switch t {
+        case .FUN(let a, let e): return .FUN(a.map(deref_typ), deref_typ(e))
+        case .VAR(let x): if let t = x.v { let t2 = deref_typ(t); x.v = t2; return t2 }
+            else { print("deref_typ failed"); x.v = .INT; return .INT }
+        default: return t
+        }
+    }
+    func deref_id_typ(_ xt: Ident) -> Ident { return Ident(xt.name, deref_typ(xt.typ)) }
+    func deref_term(_ t: T) -> T {
+        switch t {
+        case .ADD(let l, let r): return .ADD(lhs: deref_term(l), rhs: deref_term(r))
+        case .MUL(let l, let r): return .MUL(lhs: deref_term(l), rhs: deref_term(r))
+        case .LET(let xt, let v, let b): return .LET(name: deref_id_typ(xt), value: deref_term(v), in: deref_term(b))
+        case .LETREC(let xt, let a, let b, in: let e):
+            return .LETREC(name: deref_id_typ(xt), args: a.map(deref_id_typ), body: deref_term(b), in: deref_term(e))
+        case .APP(let f, let a): return .APP(fn: deref_term(f), args: a.map(deref_term))
+        default: return t
+        }
+    }
+
     func occur(_ r1: Typ, in r2: Typ) -> Bool {
         switch r2 {
         case .FUN(let t2s, let t2): return occur(r1, in: t2) || t2s.contains { occur(r1, in: $0) }
@@ -250,9 +265,11 @@ public struct Typing {
     }
     func unify(_ a: Typ, _ b: Typ) {
         switch (a, b) {
-        case (.VAR(_), .VAR(_)): break
-        case (.VAR(let l), _): l.update(b)
-        case (_, .VAR(let r)): r.update(a)
+        case (.FUN(let a1, let r1), .FUN(let a2, let r2)): zip(a1, a2).forEach { unify($0, $1) }; unify(r1, r2)
+        case (.VAR(let l), .VAR(let r)):
+            if l == r { break } else if l.v == nil { l.v = r.v } else { r.v = l.v }
+        case (.VAR(let l), _): if l.v != nil { unify(l.v!, b) } else { l.update(b) }
+        case (_, .VAR(let r)): if r.v != nil { unify(a, r.v!) } else { r.update(a) }
         default: break
         }
     }
@@ -261,34 +278,35 @@ public struct Typing {
         case .UNIT: return .UNIT
         case .BOOL: return .BOOL
         case .INT: return .INT
-        case .VAR(let x): return env[x] ?? Typ.newvar()
-        case .LET(let n, let v, let e):
-            let t = infer(&env, v).deref()
-            env[n.name] = t
-            n.typ = t
-            return infer(&env, e)
-        case .LETREC(let n, let a, let b, let e):
-            var cl = env
-            let at = a.map { cl[$0.name] = $0.typ; return $0.typ }
-            let bt = infer(&cl, b)
-            a.forEach { $0.typ = $0.typ.deref() }
-            let t = Typ.FUN(at.map {$0.deref()}, bt.deref())
-            cl[n.name] = t
-            env[n.name] = t
-            n.typ = t
-            return infer(&cl, e)
-        case .COND(_, let t, let e): let tt = infer(&env, t); let te = infer(&env, e); return infer(&env, t)
-        case .CMP: return .BOOL
-        case .ADD(let l, let r): unify(.INT, infer(&env, l)); unify(.INT, infer(&env, r)); return .INT
-        case .APP(let f, let a): _ = a.map {infer(&env, $0)}; return infer(&env, f)
-
         case .FLOAT: return .FLOAT
-        case .SEMICOLON: return .UNIT
+
+        case .ADD(let l, let r): unify(.INT, infer(&env, l)); unify(.INT, infer(&env, r)); return .INT
         case .SUB(let l, let r): unify(.INT, infer(&env, l)); unify(.INT, infer(&env, r)); return .INT
         case .MUL(let l, let r): unify(.INT, infer(&env, l)); unify(.INT, infer(&env, r)); return .INT
         case .DIV(let l, let r): unify(.INT, infer(&env, l)); unify(.INT, infer(&env, r)); return .INT
-        case .punct: return .UNIT
-        case .composite: return .UNIT
+
+        case .LET(let xt, let v, let e):
+            unify(xt.typ, infer(&env, v))
+            env[xt.name] = xt.typ
+            return infer(&env, e)
+        case .VAR(let x): if let t = env[x] { return t } else { print("extvar"); return Typ.gentyp() }
+        case .LETREC(let xt, let a, let b, let e):
+            env[xt.name] = xt.typ
+            var cl = env
+            a.forEach { cl[$0.name] = $0.typ }
+            unify(xt.typ, .FUN(a.map(\.typ), infer(&cl, b)))
+            return infer(&cl, e)
+
+        case .APP(let f, let a):
+            let t = Typ.gentyp()
+            unify(infer(&env, f), .FUN(a.map { infer(&env, $0) }, t))
+            return t
+
+//        case .COND(_, let t, let e): let tt = infer(&env, t); let te = infer(&env, e); return infer(&env, t)
+//        case .CMP: return .BOOL
+//        case .SEMICOLON: return .UNIT
+
+        default: return .UNIT
         }
     }
 }
@@ -296,9 +314,9 @@ public struct Typing {
 /// -(Syntax)-> KNormal -(KNormalT)-> Alpha -(KNormalT)-> Beta -(KNormalT)->
 
 public struct IdentX: Equatable, CustomStringConvertible {
-    var name: String
+    var name: Id.T
     var typ: Typ
-    init(_ name: String, _ typ: Typ) {
+    init(_ name: Id.T, _ typ: Typ) {
         self.name = name
         self.typ = typ
     }
@@ -306,6 +324,20 @@ public struct IdentX: Equatable, CustomStringConvertible {
         self.name = xt.name
         self.typ = xt.typ
     }
+    public var description: String { "\(name):\(typ)" }
+}
+public struct IdentL: Equatable, CustomStringConvertible {
+    var name: Id.L
+    var typ: Typ
+    init(_ name: Id.L, _ typ: Typ) {
+        self.name = name
+        self.typ = typ
+    }
+    init(_ xt: IdentX) {
+        self.name = xt.name
+        self.typ = xt.typ
+    }
+
     public var description: String { "\(name):\(typ)" }
 }
 
@@ -557,7 +589,6 @@ public struct Inline {
         switch k {
         case .LET(let xt, let v, let e): return .LET(xt, g(&env, v), g(&env, e))
         case .LETREC(let xt, let a, let b, let e):
-            print("\(xt.name): size \(size(of: b))")
             if size(of: b) < self.threshold { env[xt.name] = (a.map(\.name), b) }
             var cl = env
             return .LETREC(xt, a, g(&cl, b), g(&cl, e))
@@ -636,6 +667,134 @@ public struct Elim {
     }
 }
 
+/// -(KNormalT)-> Closure -(ClosureT)->
+
+struct ClosureX {
+    public typealias T = Self
+
+    var entry: Id.L
+    var actual_fv: [Id.T]
+}
+public indirect enum ClosureT: CustomStringConvertible {
+    public typealias T = Self
+    public typealias I = Id.T   // variable
+    public typealias L = Id.L   // function
+
+    case UNIT
+    case INT(Int)
+
+    case ADD(I, I)
+    case MUL(I, I)
+
+    case LET(IdentX, T, T)
+    case VAR(I)
+//    case LETREC(IdentX, [IdentX], T, T)
+//    case MakeCls(IdentX, ClosureX(Id.l, [Id.t]), T)
+    case MakeCls(IdentX, L, [I], T)
+//    case APP(I, [I])
+    case AppCls(I, [I])
+    case AppDir(L, [I])
+
+    public var fv: Set<String> {
+        switch self {
+        case .ADD(let l, let r), .MUL(let l, let r): return [l, r]
+        case .VAR(let x): return [x]
+        case .LET(let xt, let v, let e): return v.fv.union(e.fv.subtracting([xt.name]))
+        case .MakeCls(let xt, let l, let v, let e):
+            return Set<String>(v).union(e.fv).subtracting([xt.name])
+        case .AppCls(let f, let a): return Set<String>(a).union([f])
+        case .AppDir(_, let a): return Set<String>(a)
+        default: return []
+        }
+    }
+    public var description: String {
+        switch self {
+        case .UNIT: return "()"
+        case .INT(let x): return "\(x)"
+        case .ADD(let l, let r): return "(+ \(l) \(r))"
+        case .MUL(let l, let r): return "(* \(l) \(r))"
+        case .LET(let n, let v, let e): return "(let \(n)=\(v) in \(e))"
+        case .VAR(let n): return "(var \(n))"
+        case .MakeCls(let n, let a, let b, let e): return "(let rec \(n) \(a.map(\.description).joined(separator: " "))=\(b) in \(e))"
+        case .AppCls(let f, let a): return "(\(f) \(a.map(\.description).joined(separator: " ")))"
+        case .AppDir(let f, let a): return "(\(f) \(a.map(\.description).joined(separator: " ")))"
+        }
+    }
+}
+struct Closure {
+    typealias T = ClosureT
+    typealias E = [String: Typ]
+    typealias K = ClosureT
+
+    struct Fundef {
+        var name: IdentL
+        var args: [IdentX]
+        var formal_fv: [IdentX]
+        var body: ClosureT
+        init(_ name: IdentL, _ args: [IdentX], _ formal_fv: [IdentX], _ body: ClosureT) {
+            self.name = name
+            self.args = args
+            self.formal_fv = formal_fv
+            self.body = body
+        }
+    }
+    struct Prog {
+        var fds: [Fundef]
+        var cls: ClosureT
+    }
+    public var toplevel: [Fundef] = []
+    public var env: E = [:]
+    public var c = T.UNIT
+
+    init(_ k: KNormalT) {
+        var toplevel: [Fundef] = []
+        var env: E = [:]
+        var known: Set<String> = []
+        self.c = g(&env, &known, k)
+        self.env = env
+        self.toplevel = toplevel
+        // return Prog(List.rev !toplevel, e')
+    }
+    func g(_ env: inout E, _ known: inout Set<String>, _ k: KNormalT) -> T {
+        switch k {
+        case .UNIT: return .UNIT
+        case .INT(let i): return .INT(i)
+        case .ADD(let l, let r): return .ADD(l, r)
+        case .MUL(let l, let r): return .MUL(l, r)
+        case .VAR(let x): return .VAR(x)
+        case .LET(let xt, let v, let e):
+            env[xt.name] = xt.typ
+            return .LET(IdentX(xt.name, xt.typ), g(&env, &known, v), g(&env, &known, e))
+        case .LETREC(let xt, let a, let b, let e):
+            let toplevel_backup = toplevel
+            env[xt.name] = xt.typ
+            var cl = env
+            known.insert(xt.name)
+            var knownx = known
+            a.forEach { cl[$0.name] = $0.typ }
+            var e1 = g(&cl, &knownx, b)
+            let zs = e1.fv.subtracting(a.map(\.name))
+            if !zs.isEmpty {
+//                toplevel = toplevel_backup
+                a.forEach { cl[$0.name] = $0.typ } // ?
+                e1 = g(&cl, &known, b)
+                knownx = known
+            }
+            let zz = e1.fv.subtracting(Set<String>([xt.name]).union(a.map(\.name)))
+            let zts = zz.map { IdentX($0, cl[$0]!) }
+            let fn = Fundef(IdentL(xt), a, zts, e1)
+//            toplevel.append(fn)
+            let e2 = g(&env, &known, e)
+            if e2.fv.contains(xt.name) { return .MakeCls(xt, xt.name, [String](zz), e2) }
+            else { return e2  }
+
+        case .APP(let f, let a):
+            if known.contains(f) { return .AppDir(f, a) }
+            else { return .AppCls(f, a) }
+        default: return .UNIT // TODO
+        }
+    }
+}
 
 struct MinCaml {
     let ps = Parser()
@@ -667,10 +826,11 @@ struct MinCaml {
         guard let asts = r.ast else { return nil }
         var out: [String] = []
         asts.forEach { ast in
-            let x1 = Typing(ast)
             out.append(ast.description)
+            let x1 = Typing(ast)
+            out.append(x1.s.description)
 //            out.append(x1.env.description)
-            let x2 = KNormal(ast)
+            let x2 = KNormal(x1.s)
             out.append(x2.k.description)
 //            out.append(x2.env.description)
             let x3 = Alpha(x2.k)
@@ -683,12 +843,14 @@ struct MinCaml {
             out.append(x5.k.description)
             let x6 = Inline(x5.k)
             out.append(x6.k.description)
-            out.append(x6.env.description)
+//            out.append(x6.env.description)
             let x7 = ConstFold(x6.k)
             out.append(x7.k.description)
-            out.append(x7.env.description)
+//            out.append(x7.env.description)
             let x8 = Elim(x7.k)
             out.append(x8.k.description)
+            let x9 = Closure(x8.k)
+            out.append(x9.c.description)
         }
         return out
     }
