@@ -64,8 +64,6 @@ public indirect enum Typ: Equatable, CustomStringConvertible {
     }
 }
 
-/// -(String)-> Parser -(Syntax)-> Typing -(Syntax)->
-
 public class Ident: Equatable, CustomStringConvertible {
     var name: String
     var typ: Typ
@@ -168,9 +166,10 @@ public indirect enum Syntax: Equatable, CustomStringConvertible {
 }
 
 public class Parser {
-    private static func thru(_ ast: [Syntax]) -> [Syntax] { return ast }
-    private static func word(_ str: String) -> Syntax { return .punct(str) }
-    let lib: [String: PEGRule<Syntax>] = [
+    public typealias T = Syntax
+    private static func thru(_ ast: [T]) -> [T] { return ast }
+    private static func word(_ str: String) -> T { return .punct(str) }
+    let lib: [String: PEGRule<T>] = [
         "exprs": .sequence([.ref("expr"), .zeroMore([.terminal(/;/, {_ in .SEMICOLON}), .ref("expr")], thru)],
                            { $0.filter { $0 != .SEMICOLON } }),
         "expr": .choice([.ref("letrec"), .ref("letvar"), .ref("cond"), .ref("add")], thru),
@@ -204,7 +203,7 @@ public class Parser {
         "cmpexpr": .sequence([.ref("app"), .opt([.sequence([.terminal(/=|!=|<=|>=|<|>/, word), .ref("app")], thru)], thru)],
                              { xs in if xs.count == 1 { xs } else { [.CMP(pred: xs[1].asString!, lhs: xs[0], rhs: xs[2])] } }),
         "app": .sequence([.ref("atom"), .zeroMore([.ref("atom")], thru)], { xs in
-            if xs.count == 1 { xs } else { [.APP(fn: xs[0], args: [Syntax](xs[1...]))] } }),
+            if xs.count == 1 { xs } else { [.APP(fn: xs[0], args: [T](xs[1...]))] } }),
         "atom": .choice([.ref("float"), .ref("int"), .ref("unit"), .ref("paren"), .ref("bool"), .ref("ident")], thru),
         "paren": .sequence([.terminal(/\(/, word), .ref("expr"), .terminal(/\)/, word)], { [$0[1]] }),
         "unit": .terminal(/\(\)/, { _ in .UNIT }),
@@ -215,21 +214,19 @@ public class Parser {
         "ident": .sequence([.forbid([.terminal(/(?:in|let|rec|if|then|else|true|false)\b/, word)], thru), .ref("ident0")], thru),
         "ident0": .terminal(/[A-Za-z_][A-Za-z0-9_]*/, { .VAR($0) }),
     ]
-    var parser: PEGParser<Syntax>
-    init() { parser = PEGParser<Syntax>(lib) }
-    func parse(_ input: String, _ top: String) -> PEGResult<Syntax> {
-        return parser.parse(input, top)
-    }
+    var parser: PEGParser<T>
+    init() { parser = PEGParser<T>(lib) }
+    func parse(_ input: String, _ top: String) -> PEGResult<T> { return parser.parse(input, top) }
 }
 
 public struct Typing {
     public typealias T = Syntax
     public typealias E = [String: Typ]
 
-    public var env: [String: Typ] = [:]
+    public var env: E = [:]
     public var s: T = .UNIT
     init(_ ast: T) {
-        var env: [String: Typ] = [:]
+        var env: E = [:]
         unify(.UNIT, infer(&env, ast))
         //extenv = extenv.mapValues(deref_typ)
         self.s = deref_term(ast)
@@ -311,8 +308,6 @@ public struct Typing {
     }
 }
 
-/// -(Syntax)-> KNormal -(KNormalT)-> Alpha -(KNormalT)-> Beta -(KNormalT)->
-
 public struct IdentX: Equatable, CustomStringConvertible {
     var name: Id.T
     var typ: Typ
@@ -326,6 +321,7 @@ public struct IdentX: Equatable, CustomStringConvertible {
     }
     public var description: String { name } // { "\(name):\(typ)" }
 }
+
 public struct IdentL: Equatable, CustomStringConvertible {
     var name: Id.L
     var typ: Typ
@@ -572,7 +568,7 @@ public struct Inline {
     public var k = T.UNIT
     var threshold: Int
 
-    init(_ k: T, _ threshold: Int = 0) {
+    init(_ k: T, _ threshold: Int = 10) {
         var env: E = [:]
         self.threshold = threshold
         self.k = g(&env, k)
@@ -667,14 +663,13 @@ public struct Elim {
     }
 }
 
-/// -(KNormalT)-> Closure -(ClosureT)->
-
 struct ClosureX {
     public typealias T = Self
 
     var entry: Id.L
     var actual_fv: [Id.T]
 }
+
 public indirect enum ClosureT: CustomStringConvertible {
     public typealias T = Self
     public typealias I = Id.T   // variable
@@ -850,7 +845,6 @@ struct Emit {
     }
 }
 
-
 struct MinCaml {
     let ps = Parser()
     init() { }
@@ -877,38 +871,38 @@ struct MinCaml {
              (Typing.f
               (Parser.exp Lexer.token l)))))))))
      */
-    func handle(_ input: String) -> [String]? {
+    func handle(_ input: String) -> [(String, String)]? {
         let r = ps.parse(input, "exprs")
         guard let asts = r.ast else { return nil }
-        var out: [String] = []
+        var out: [(String, String)] = []
         asts.forEach { ast in
-            out.append(ast.description)
+            out.append((ast.description, "AST"))
             let x1 = Typing(ast)
-            out.append(x1.s.description)
+            out.append((x1.s.description, "Typing"))
             let x2 = KNormal(x1.s)
-            out.append(x2.k.description)
+            out.append((x2.k.description, "KNormal"))
             let x3 = Alpha(x2.k)
-            out.append(x3.k.description)
-            
+            out.append((x3.k.description, "Alpha"))
+
             let x4 = Beta(x3.k)
-            out.append(x4.k.description)
+            out.append((x4.k.description, "Beta"))
             let x5 = Assoc(x4.k)
-            out.append(x5.k.description)
+            out.append((x5.k.description, "Assoc"))
             let x6 = Inline(x5.k)
-            out.append(x6.k.description)
+            out.append((x6.k.description, "Inline"))
             let x7 = ConstFold(x6.k)
-            out.append(x7.k.description)
+            out.append((x7.k.description, "ConstFold"))
             let x8 = Elim(x7.k)
-            out.append(x8.k.description)
+            out.append((x8.k.description, "Elim"))
 
             let x9 = Closure(x8.k)
-            x9.toplevel.forEach { out.append($0.description) }
-            out.append(x9.e.description)
+            x9.toplevel.forEach { out.append(($0.description, "-")) }
+            out.append((x9.e.description, "Closure"))
             let x10 = Virtual(x9.toplevel, x9.e) // do nothing
-            x10.fundefs.forEach { out.append($0.description) }
-            out.append(x10.e.description)
+            x10.fundefs.forEach { out.append(($0.description, "-")) }
+            out.append((x10.e.description, "Virtual"))
             let x11 = Emit(x10.fundefs, x10.e)
-            out.append(x11.ir)
+            out.append((x11.ir, "Emit"))
         }
         return out
     }

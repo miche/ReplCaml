@@ -1,20 +1,20 @@
 import Foundation
 
 enum PEGRule<AST>: CustomDebugStringConvertible {
-    typealias r  = [PEGRule]
-    typealias t = ([AST])->[AST]
+    typealias R  = [PEGRule]
+    typealias T = ([AST])->[AST]
 
-    case sequence(r, t)
-    case opt(r, t)
-    case zeroMore(r, t)
-    case onePlus(r, t)
-    case choice(r, t)
-    case lookahead(r, t)
-    case forbid(r, t)
+    case sequence(R, T)
+    case opt(R, T)
+    case zeroMore(R, T)
+    case onePlus(R, T)
+    case choice(R, T)
+    case lookahead(R, T)
+    case forbid(R, T)
 
     case terminal(Regex<Substring>, (String)->AST)
     case ref(String)
-    case transform(t)
+    case transform(T)
 
     var debugDescription: String {
         switch self {
