@@ -324,7 +324,7 @@ public struct IdentX: Equatable, CustomStringConvertible {
         self.name = xt.name
         self.typ = xt.typ
     }
-    public var description: String { "\(name):\(typ)" }
+    public var description: String { name } // { "\(name):\(typ)" }
 }
 public struct IdentL: Equatable, CustomStringConvertible {
     var name: Id.L
@@ -572,7 +572,7 @@ public struct Inline {
     public var k = T.UNIT
     var threshold: Int
 
-    init(_ k: T, _ threshold: Int = 10) {
+    init(_ k: T, _ threshold: Int = 0) {
         var env: E = [:]
         self.threshold = threshold
         self.k = g(&env, k)
@@ -692,8 +692,8 @@ public indirect enum ClosureT: CustomStringConvertible {
 //    case MakeCls(IdentX, ClosureX(Id.l, [Id.t]), T)
     case MakeCls(IdentX, L, [I], T)
 //    case APP(I, [I])
-    case AppCls(I, [I])
-    case AppDir(L, [I])
+    case AppCls(I, [I]) // closure
+    case AppDir(L, [I]) // direct call(top level)
 
     public var fv: Set<String> {
         switch self {
@@ -715,47 +715,51 @@ public indirect enum ClosureT: CustomStringConvertible {
         case .MUL(let l, let r): return "(* \(l) \(r))"
         case .LET(let n, let v, let e): return "(let \(n)=\(v) in \(e))"
         case .VAR(let n): return "(var \(n))"
-        case .MakeCls(let n, let a, let b, let e): return "(let rec \(n) \(a.map(\.description).joined(separator: " "))=\(b) in \(e))"
+        case .MakeCls(let n, let a, let fv, let e): return "(\(n.name):\(n.typ) \(a)/\(fv.map(\.description).joined(separator: " "))=\(e))"
         case .AppCls(let f, let a): return "(\(f) \(a.map(\.description).joined(separator: " ")))"
         case .AppDir(let f, let a): return "(\(f) \(a.map(\.description).joined(separator: " ")))"
         }
     }
 }
+
+struct Fundef: CustomStringConvertible {
+    var name: IdentL
+    var args: [IdentX]
+    var formal_fv: [IdentX]
+    var body: ClosureT
+    init(_ name: IdentL, _ args: [IdentX], _ formal_fv: [IdentX], _ body: ClosureT) {
+        self.name = name
+        self.args = args
+        self.formal_fv = formal_fv
+        self.body = body
+    }
+    var description: String {
+        return "\(name) \(args.map(\.description).joined(separator: " "))/\(formal_fv.map(\.description).joined(separator: " "))=\(body)"
+    }
+}
+
 struct Closure {
     typealias T = ClosureT
     typealias E = [String: Typ]
     typealias K = ClosureT
 
-    struct Fundef {
-        var name: IdentL
-        var args: [IdentX]
-        var formal_fv: [IdentX]
-        var body: ClosureT
-        init(_ name: IdentL, _ args: [IdentX], _ formal_fv: [IdentX], _ body: ClosureT) {
-            self.name = name
-            self.args = args
-            self.formal_fv = formal_fv
-            self.body = body
-        }
-    }
-    struct Prog {
-        var fds: [Fundef]
-        var cls: ClosureT
-    }
     public var toplevel: [Fundef] = []
     public var env: E = [:]
-    public var c = T.UNIT
+    public var e = T.UNIT
 
     init(_ k: KNormalT) {
         var toplevel: [Fundef] = []
         var env: E = [:]
         var known: Set<String> = []
-        self.c = g(&env, &known, k)
+        self.e = g(&env, &known, &toplevel, k)
         self.env = env
         self.toplevel = toplevel
         // return Prog(List.rev !toplevel, e')
     }
-    func g(_ env: inout E, _ known: inout Set<String>, _ k: KNormalT) -> T {
+    // let rec quad x = let rec dbl x = x + x in dbl (dbl x) in quad 123
+    // let rec make_adder x = let rec adder y = x + y in adder in (make_adder 3) 7
+
+    func g(_ env: inout E, _ known: inout Set<String>, _ toplevel: inout [Fundef], _ k: KNormalT) -> T {
         switch k {
         case .UNIT: return .UNIT
         case .INT(let i): return .INT(i)
@@ -764,37 +768,88 @@ struct Closure {
         case .VAR(let x): return .VAR(x)
         case .LET(let xt, let v, let e):
             env[xt.name] = xt.typ
-            return .LET(IdentX(xt.name, xt.typ), g(&env, &known, v), g(&env, &known, e))
+            return .LET(IdentX(xt.name, xt.typ), g(&env, &known, &toplevel, v), g(&env, &known, &toplevel, e))
         case .LETREC(let xt, let a, let b, let e):
-            let toplevel_backup = toplevel
             env[xt.name] = xt.typ
             var cl = env
             known.insert(xt.name)
             var knownx = known
             a.forEach { cl[$0.name] = $0.typ }
-            var e1 = g(&cl, &knownx, b)
+            var toplevel_trial = toplevel
+            var e1 = g(&cl, &knownx, &toplevel_trial, b)
             let zs = e1.fv.subtracting(a.map(\.name))
-            if !zs.isEmpty {
-//                toplevel = toplevel_backup
+            if zs.isEmpty {
+                toplevel = toplevel_trial
+            } else {
                 a.forEach { cl[$0.name] = $0.typ } // ?
-                e1 = g(&cl, &known, b)
+                e1 = g(&cl, &known, &toplevel, b)
                 knownx = known
             }
             let zz = e1.fv.subtracting(Set<String>([xt.name]).union(a.map(\.name)))
             let zts = zz.map { IdentX($0, cl[$0]!) }
             let fn = Fundef(IdentL(xt), a, zts, e1)
-//            toplevel.append(fn)
-            let e2 = g(&env, &known, e)
-            if e2.fv.contains(xt.name) { return .MakeCls(xt, xt.name, [String](zz), e2) }
+            toplevel.append(fn)
+            let e2 = g(&env, &known, &toplevel, e)
+            if e2.fv.contains(xt.name) { return .MakeCls(xt, xt.name, Array(zz), e2) }
             else { return e2  }
 
         case .APP(let f, let a):
-            if known.contains(f) { return .AppDir(f, a) }
-            else { return .AppCls(f, a) }
+            if known.contains(f) { return .AppDir(f, a) } else { return .AppCls(f, a) }
+
         default: return .UNIT // TODO
         }
     }
 }
+
+struct Virtual {
+    typealias T = ClosureT
+    typealias E = [String: ClosureT]
+
+    func h(_ f: Fundef) -> Fundef {
+        return f
+    }
+    func g(_ env: inout E, _ e: T) -> T {
+        switch e {
+        case .UNIT: return e
+        case .INT(_): return e
+        case .ADD(_, _): return e
+        case .MUL(_, _): return e
+        case .LET(_, _, _): return e
+        case .VAR(_): return e
+        case .MakeCls(_, _, _, _): return e
+        case .AppCls(_, _): return e
+        case .AppDir(_, _): return e
+        }
+    }
+    var fundefs: [Fundef] = []
+    var e: T = .UNIT
+    init(_ fundefs: [Fundef], _ e: T) {
+        self.fundefs = fundefs.map(h)
+        var env: E = [:]
+        self.e = g(&env, e)
+    }
+}
+
+struct Emit {
+    typealias T = ClosureT
+
+    public var ir: String = "emit"
+
+    func h(_ fd: Fundef) {
+        //declare void @llvm.init.trampoline(ptr <tramp>, ptr <func>, ptr <nval>)
+
+    }
+    func g(_ e: T) -> T {
+        return e
+    }
+
+    init(_ fundefs: [Fundef], _ e: T) {
+        fundefs.forEach { h($0) }
+        _ = g(e)
+        ir = "ok"
+    }
+}
+
 
 struct MinCaml {
     let ps = Parser()
@@ -812,7 +867,8 @@ struct MinCaml {
       (RegAlloc.f
        (Simm.f
         (Virtual.f
-         (Closure.f
+
+        (Closure.f
 
           (iter !limit
             -- Elim.f (ConstFold.f (Inline.f (Assoc.f (Beta.f
@@ -829,30 +885,31 @@ struct MinCaml {
             out.append(ast.description)
             let x1 = Typing(ast)
             out.append(x1.s.description)
-//            out.append(x1.env.description)
             let x2 = KNormal(x1.s)
             out.append(x2.k.description)
-//            out.append(x2.env.description)
             let x3 = Alpha(x2.k)
             out.append(x3.k.description)
-//            out.append(x3.env.description)
+            
             let x4 = Beta(x3.k)
             out.append(x4.k.description)
-//            out.append(x4.env.description)
             let x5 = Assoc(x4.k)
             out.append(x5.k.description)
             let x6 = Inline(x5.k)
             out.append(x6.k.description)
-//            out.append(x6.env.description)
             let x7 = ConstFold(x6.k)
             out.append(x7.k.description)
-//            out.append(x7.env.description)
             let x8 = Elim(x7.k)
             out.append(x8.k.description)
+
             let x9 = Closure(x8.k)
-            out.append(x9.c.description)
+            x9.toplevel.forEach { out.append($0.description) }
+            out.append(x9.e.description)
+            let x10 = Virtual(x9.toplevel, x9.e) // do nothing
+            x10.fundefs.forEach { out.append($0.description) }
+            out.append(x10.e.description)
+            let x11 = Emit(x10.fundefs, x10.e)
+            out.append(x11.ir)
         }
         return out
     }
 }
-

@@ -8,17 +8,72 @@
 
 /* Begin PBXBuildFile section */
 		C64A10542E125B4E007779CB /* .gitignore in Resources */ = {isa = PBXBuildFile; fileRef = C64A10532E125B44007779CB /* .gitignore */; };
+		C6E330562E163C41008C0B78 /* LLVMKitSwift.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = C6E330502E163C41008C0B78 /* LLVMKitSwift.framework */; };
+		C6E330572E163C41008C0B78 /* LLVMKitSwift.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = C6E330502E163C41008C0B78 /* LLVMKitSwift.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
+		C6E330702E164A23008C0B78 /* LLVMKitSwift.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = C6E330502E163C41008C0B78 /* LLVMKitSwift.framework */; };
+		C6E330842E164F5D008C0B78 /* libLLVM.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = C6E330832E164F5D008C0B78 /* libLLVM.dylib */; };
 /* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		C6E330542E163C41008C0B78 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = C6A09C572E03B15B004D6D12 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = C6E3304F2E163C41008C0B78;
+			remoteInfo = LLVMKitSwift;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		C6E3303F2E162FA5008C0B78 /* CopyFiles */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = /usr/share/man/man1/;
+			dstSubfolderSpec = 0;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 1;
+		};
+		C6E3305B2E163C41008C0B78 /* Embed Frameworks */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 10;
+			files = (
+				C6E330572E163C41008C0B78 /* LLVMKitSwift.framework in Embed Frameworks */,
+			);
+			name = "Embed Frameworks";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		C6E330732E164BA7008C0B78 /* CopyFiles */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = /usr/share/man/man1/;
+			dstSubfolderSpec = 0;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 1;
+		};
+/* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
 		C64A10532E125B44007779CB /* .gitignore */ = {isa = PBXFileReference; lastKnownFileType = text; path = .gitignore; sourceTree = "<group>"; };
 		C6A09C5F2E03B15B004D6D12 /* ReplCaml.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ReplCaml.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		C6E330412E162FA5008C0B78 /* LLVMTest */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = LLVMTest; sourceTree = BUILT_PRODUCTS_DIR; };
+		C6E330502E163C41008C0B78 /* LLVMKitSwift.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = LLVMKitSwift.framework; sourceTree = BUILT_PRODUCTS_DIR; };
+		C6E330752E164BA7008C0B78 /* Bridging */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = Bridging; sourceTree = BUILT_PRODUCTS_DIR; };
+		C6E330832E164F5D008C0B78 /* libLLVM.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libLLVM.dylib; path = ../../../../opt/homebrew/Cellar/llvm/20.1.7/lib/libLLVM.dylib; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		C6A09C612E03B15B004D6D12 /* ReplCaml */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = ReplCaml;
+			sourceTree = "<group>";
+		};
+		C6E330762E164BA7008C0B78 /* Bridging */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = Bridging;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -28,6 +83,30 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				C6E330562E163C41008C0B78 /* LLVMKitSwift.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		C6E3303E2E162FA5008C0B78 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				C6E330702E164A23008C0B78 /* LLVMKitSwift.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		C6E3304D2E163C41008C0B78 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		C6E330722E164BA7008C0B78 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				C6E330842E164F5D008C0B78 /* libLLVM.dylib in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -39,6 +118,8 @@
 			children = (
 				C64A10532E125B44007779CB /* .gitignore */,
 				C6A09C612E03B15B004D6D12 /* ReplCaml */,
+				C6E330762E164BA7008C0B78 /* Bridging */,
+				C6E330482E163137008C0B78 /* Frameworks */,
 				C6A09C602E03B15B004D6D12 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -47,11 +128,32 @@
 			isa = PBXGroup;
 			children = (
 				C6A09C5F2E03B15B004D6D12 /* ReplCaml.app */,
+				C6E330412E162FA5008C0B78 /* LLVMTest */,
+				C6E330502E163C41008C0B78 /* LLVMKitSwift.framework */,
+				C6E330752E164BA7008C0B78 /* Bridging */,
 			);
 			name = Products;
 			sourceTree = "<group>";
 		};
+		C6E330482E163137008C0B78 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				C6E330832E164F5D008C0B78 /* libLLVM.dylib */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
 /* End PBXGroup section */
+
+/* Begin PBXHeadersBuildPhase section */
+		C6E3304B2E163C41008C0B78 /* Headers */ = {
+			isa = PBXHeadersBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXHeadersBuildPhase section */
 
 /* Begin PBXNativeTarget section */
 		C6A09C5E2E03B15B004D6D12 /* ReplCaml */ = {
@@ -61,10 +163,12 @@
 				C6A09C5B2E03B15B004D6D12 /* Sources */,
 				C6A09C5C2E03B15B004D6D12 /* Frameworks */,
 				C6A09C5D2E03B15B004D6D12 /* Resources */,
+				C6E3305B2E163C41008C0B78 /* Embed Frameworks */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				C6E330552E163C41008C0B78 /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				C6A09C612E03B15B004D6D12 /* ReplCaml */,
@@ -75,6 +179,67 @@
 			productName = ReplCaml;
 			productReference = C6A09C5F2E03B15B004D6D12 /* ReplCaml.app */;
 			productType = "com.apple.product-type.application";
+		};
+		C6E330402E162FA5008C0B78 /* LLVMTest */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = C6E330452E162FA5008C0B78 /* Build configuration list for PBXNativeTarget "LLVMTest" */;
+			buildPhases = (
+				C6E3303D2E162FA5008C0B78 /* Sources */,
+				C6E3303E2E162FA5008C0B78 /* Frameworks */,
+				C6E3303F2E162FA5008C0B78 /* CopyFiles */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = LLVMTest;
+			packageProductDependencies = (
+			);
+			productName = LLVMTest;
+			productReference = C6E330412E162FA5008C0B78 /* LLVMTest */;
+			productType = "com.apple.product-type.tool";
+		};
+		C6E3304F2E163C41008C0B78 /* LLVMKitSwift */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = C6E330582E163C41008C0B78 /* Build configuration list for PBXNativeTarget "LLVMKitSwift" */;
+			buildPhases = (
+				C6E3304B2E163C41008C0B78 /* Headers */,
+				C6E3304C2E163C41008C0B78 /* Sources */,
+				C6E3304D2E163C41008C0B78 /* Frameworks */,
+				C6E3304E2E163C41008C0B78 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = LLVMKitSwift;
+			packageProductDependencies = (
+			);
+			productName = LLVMKitSwift;
+			productReference = C6E330502E163C41008C0B78 /* LLVMKitSwift.framework */;
+			productType = "com.apple.product-type.framework";
+		};
+		C6E330742E164BA7008C0B78 /* Bridging */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = C6E330792E164BA7008C0B78 /* Build configuration list for PBXNativeTarget "Bridging" */;
+			buildPhases = (
+				C6E330712E164BA7008C0B78 /* Sources */,
+				C6E330722E164BA7008C0B78 /* Frameworks */,
+				C6E330732E164BA7008C0B78 /* CopyFiles */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				C6E330762E164BA7008C0B78 /* Bridging */,
+			);
+			name = Bridging;
+			packageProductDependencies = (
+			);
+			productName = Bridging;
+			productReference = C6E330752E164BA7008C0B78 /* Bridging */;
+			productType = "com.apple.product-type.tool";
 		};
 /* End PBXNativeTarget section */
 
@@ -87,6 +252,16 @@
 				LastUpgradeCheck = 1640;
 				TargetAttributes = {
 					C6A09C5E2E03B15B004D6D12 = {
+						CreatedOnToolsVersion = 16.4;
+					};
+					C6E330402E162FA5008C0B78 = {
+						CreatedOnToolsVersion = 16.4;
+					};
+					C6E3304F2E163C41008C0B78 = {
+						CreatedOnToolsVersion = 16.4;
+						LastSwiftMigration = 1640;
+					};
+					C6E330742E164BA7008C0B78 = {
 						CreatedOnToolsVersion = 16.4;
 					};
 				};
@@ -106,6 +281,9 @@
 			projectRoot = "";
 			targets = (
 				C6A09C5E2E03B15B004D6D12 /* ReplCaml */,
+				C6E330402E162FA5008C0B78 /* LLVMTest */,
+				C6E3304F2E163C41008C0B78 /* LLVMKitSwift */,
+				C6E330742E164BA7008C0B78 /* Bridging */,
 			);
 		};
 /* End PBXProject section */
@@ -119,6 +297,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		C6E3304E2E163C41008C0B78 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
@@ -129,7 +314,36 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		C6E3303D2E162FA5008C0B78 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		C6E3304C2E163C41008C0B78 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		C6E330712E164BA7008C0B78 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		C6E330552E163C41008C0B78 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = C6E3304F2E163C41008C0B78 /* LLVMKitSwift */;
+			targetProxy = C6E330542E163C41008C0B78 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
 		C6A09C692E03B15B004D6D12 /* Debug */ = {
@@ -191,6 +405,7 @@
 				ONLY_ACTIVE_ARCH = YES;
 				SDKROOT = macosx;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_OBJC_INTEROP_MODE = objcxx;
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 			};
 			name = Debug;
@@ -247,6 +462,7 @@
 				MTL_FAST_MATH = YES;
 				SDKROOT = macosx;
 				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OBJC_INTEROP_MODE = objcxx;
 			};
 			name = Release;
 		};
@@ -300,6 +516,139 @@
 			};
 			name = Release;
 		};
+		C6E330462E162FA5008C0B78 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				MODULEMAP_FILE = "$(SRCROOT)/LLVMKit/module.modulemap";
+				MODULEMAP_PRIVATE_FILE = "$(SRCROOT)/LLVMKit/module.modulemap";
+				OTHER_SWIFT_FLAGS = "";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_OBJC_INTEROP_MODE = objcxx;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		C6E330472E162FA5008C0B78 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				MODULEMAP_FILE = "$(SRCROOT)/LLVMKit/module.modulemap";
+				MODULEMAP_PRIVATE_FILE = "$(SRCROOT)/LLVMKit/module.modulemap";
+				OTHER_SWIFT_FLAGS = "";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_OBJC_INTEROP_MODE = objcxx;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+		C6E330592E163C41008C0B78 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUILD_LIBRARY_FOR_DISTRIBUTION = NO;
+				CLANG_ENABLE_MODULES = YES;
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				DEFINES_MODULE = YES;
+				DYLIB_COMPATIBILITY_VERSION = 1;
+				DYLIB_CURRENT_VERSION = 1;
+				DYLIB_INSTALL_NAME_BASE = "@rpath";
+				ENABLE_MODULE_VERIFIER = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				INSTALL_PATH = "$(LOCAL_LIBRARY_DIR)/Frameworks";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+					"@loader_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				MODULE_VERIFIER_SUPPORTED_LANGUAGES = "objective-c++";
+				MODULE_VERIFIER_SUPPORTED_LANGUAGE_STANDARDS = "gnu17 gnu++20";
+				PRODUCT_BUNDLE_IDENTIFIER = m1.LLVMKitSwift;
+				PRODUCT_NAME = "$(TARGET_NAME:c99extidentifier)";
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_INSTALL_MODULE = YES;
+				SWIFT_INSTALL_OBJC_HEADER = YES;
+				SWIFT_OBJC_INTEROP_MODE = objcxx;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.0;
+				VERSIONING_SYSTEM = "apple-generic";
+				VERSION_INFO_PREFIX = "";
+			};
+			name = Debug;
+		};
+		C6E3305A2E163C41008C0B78 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUILD_LIBRARY_FOR_DISTRIBUTION = NO;
+				CLANG_ENABLE_MODULES = YES;
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				DEFINES_MODULE = YES;
+				DYLIB_COMPATIBILITY_VERSION = 1;
+				DYLIB_CURRENT_VERSION = 1;
+				DYLIB_INSTALL_NAME_BASE = "@rpath";
+				ENABLE_MODULE_VERIFIER = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				INSTALL_PATH = "$(LOCAL_LIBRARY_DIR)/Frameworks";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+					"@loader_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				MODULE_VERIFIER_SUPPORTED_LANGUAGES = "objective-c++";
+				MODULE_VERIFIER_SUPPORTED_LANGUAGE_STANDARDS = "gnu17 gnu++20";
+				PRODUCT_BUNDLE_IDENTIFIER = m1.LLVMKitSwift;
+				PRODUCT_NAME = "$(TARGET_NAME:c99extidentifier)";
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_INSTALL_MODULE = YES;
+				SWIFT_INSTALL_OBJC_HEADER = YES;
+				SWIFT_OBJC_INTEROP_MODE = objcxx;
+				SWIFT_VERSION = 5.0;
+				VERSIONING_SYSTEM = "apple-generic";
+				VERSION_INFO_PREFIX = "";
+			};
+			name = Release;
+		};
+		C6E3307A2E164BA7008C0B78 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				FRAMEWORK_SEARCH_PATHS = /opt/homebrew/opt/llvm/lib;
+				HEADER_SEARCH_PATHS = /opt/homebrew/opt/llvm/include;
+				LIBRARY_SEARCH_PATHS = (
+					"$(inherited)",
+					/opt/homebrew/Cellar/llvm/20.1.7/lib,
+				);
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_OBJC_BRIDGING_HEADER = "Bridging/Bridging-Header.h";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		C6E3307B2E164BA7008C0B78 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				FRAMEWORK_SEARCH_PATHS = /opt/homebrew/opt/llvm/lib;
+				HEADER_SEARCH_PATHS = /opt/homebrew/opt/llvm/include;
+				LIBRARY_SEARCH_PATHS = (
+					"$(inherited)",
+					/opt/homebrew/Cellar/llvm/20.1.7/lib,
+				);
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_OBJC_BRIDGING_HEADER = "Bridging/Bridging-Header.h";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -317,6 +666,33 @@
 			buildConfigurations = (
 				C6A09C6C2E03B15B004D6D12 /* Debug */,
 				C6A09C6D2E03B15B004D6D12 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		C6E330452E162FA5008C0B78 /* Build configuration list for PBXNativeTarget "LLVMTest" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				C6E330462E162FA5008C0B78 /* Debug */,
+				C6E330472E162FA5008C0B78 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		C6E330582E163C41008C0B78 /* Build configuration list for PBXNativeTarget "LLVMKitSwift" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				C6E330592E163C41008C0B78 /* Debug */,
+				C6E3305A2E163C41008C0B78 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		C6E330792E164BA7008C0B78 /* Build configuration list for PBXNativeTarget "Bridging" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				C6E3307A2E164BA7008C0B78 /* Debug */,
+				C6E3307B2E164BA7008C0B78 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

@@ -1,7 +1,16 @@
 import Foundation
 
-let k: KNormalT = .f("f", ["t"], .a("s", "t"), in: .x("f", ["y"]))
-print(k.fv)
+var x: Set<String> = ["aaa"]
+print(Array(x))
+
+
+// let rec quad x = let rec dbl x = x + x in dbl (dbl x) in quad 123
+
+let k: KNormalT = .f("quad", ["x"],
+                     .f("dbl", ["y"], .a("y", "y"), in: .d("t1", .x("dbl", ["x"]), in: .x("dbl", ["t1"]))),
+                     in: .d("t2", .i(123), in:.x("quad", ["t2"])))
+let t = Closure(k)
+print(t.e)
 
 func test5() {
     let k: KNormalT = .d("x", .i(3), in: .a("x", "y"))
