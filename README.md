@@ -11,5 +11,7 @@ Considering MLIR dialect too.
 - [MLIR Language Reference](https://mlir.llvm.org/docs/LangRef/)
 - [MLIR doxygen](https://mlir.llvm.org/doxygen/)
 - [OCaml 5.3 manual](https://ocaml.org/manual/5.3/index.html)
+- [The MinCaml compiler + shift/reset](http://pllab.is.ocha.ac.jp/min-caml-e.php)
+
 ## License
 - MIT
