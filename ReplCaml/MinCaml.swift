@@ -873,34 +873,8 @@ indirect enum Asm: CustomStringConvertible {
             case .ANS(let e): return "ANS \(e);"
             case .LET(let x, let e, let a):
             return "(LET \(x) \(e) in \(a))"
-            //return "%\(x) = alloca i32; store \(e), ptr %\(x); in \(a))"
         }
     }
-    /*
-     type fundef = { name : Id.l; args : Id.t list; fargs : Id.t list; body : t; ret : Type.t }
-     type prog = Prog of (Id.l * float) list * fundef list * t
-
-     val fletd : Id.t * exp * t -> t (* shorthand of Let for float *)
-     val seq : exp * t -> t (* shorthand of Let for unit *)
-
-     val regs : Id.t array
-     val fregs : Id.t array
-     val allregs : Id.t list
-     val allfregs : Id.t list
-     val reg_cl : Id.t
-     val reg_sw : Id.t
-     val reg_fsw : Id.t
-     val reg_ra : Id.t
-     val reg_hp : Id.t
-     val reg_sp : Id.t
-     val is_reg : Id.t -> bool
-     val co_freg : Id.t -> Id.t
-
-     val fv : t -> Id.t list
-     val concat : t -> Id.t * Type.t -> t -> t
-
-     val align : int -> int
-     */
 }
 
 struct Virtual {
@@ -933,15 +907,11 @@ struct Virtual {
                         { oa, x, t in return (oa.0 + 4, addi(x, t, oa.0, oa.1))} )
     }
 
-    // let fv_id_or_imm = function V(x) -> [x] | _ -> []
     func concat(_ e1: T, _ xt: IdentX, _ e2: T) -> T {
         switch e1 {
         case .ANS(let exp): return .LET(xt, exp, e2)
         case .LET(let yt, let exp, let e1_): return .LET(yt, exp, concat(e1_, xt, e2))
         }
-        //            match e1 with
-        //            | Ans(exp) -> Let(xt, exp, e2)
-        //            | Let(yt, exp, e1') -> Let(yt, exp, concat e1' xt e2)
     }
 
     func g(_ env: inout E, _ e: ClosureT) -> T {
@@ -999,7 +969,7 @@ struct Virtual {
             return Asm.Fundef(f.name.name, it, ft, load, t2)
         } else { fatalError() }
     }
-    // prog(fundef list * t)
+
     var fundefs: [Asm.Fundef] = []
     var e: T = .ANS(.NOP)
     init(_ fundefs: [ClosureT.Fundef], _ e: ClosureT) {
@@ -1033,28 +1003,6 @@ struct MinCaml {
     let ps = Parser()
     init() { }
 
-    /*
-     let rec iter n e = (* 最適化処理をくりかえす *)
-       Format.eprintf "iteration %d@." n;
-       if n = 0 then e else
-         let e' = Elim.f (ConstFold.f (Inline.f (Assoc.f (Beta.f e)))) in
-       if e = e' then e else
-         iter (n - 1) e'
-
-     Emit.f outchan
-      (RegAlloc.f
-       (Simm.f
-        (Virtual.f
-
-        (Closure.f
-
-          (iter !limit
-            -- Elim.f (ConstFold.f (Inline.f (Assoc.f (Beta.f
-           (Alpha.f
-            (KNormal.f
-             (Typing.f
-              (Parser.exp Lexer.token l)))))))))
-     */
     func handle(_ input: String) -> [(String, String)]? {
         let r = ps.parse(input, "exprs")
         guard let asts = r.ast else { return nil }
@@ -1068,6 +1016,7 @@ struct MinCaml {
             let x3 = Alpha(x2.k)
             out.append((x3.k.description, "Alpha"))
 
+            //optimization begin
             let x4 = Beta(x3.k)
             out.append((x4.k.description, "Beta"))
             let x5 = Assoc(x4.k)
@@ -1078,6 +1027,7 @@ struct MinCaml {
             out.append((x7.k.description, "ConstFold"))
             let x8 = Elim(x7.k)
             out.append((x8.k.description, "Elim"))
+            //optimization end
 
             let x9 = Closure(x8.k)
             x9.toplevel.forEach { out.append(($0.description, "-")) }
