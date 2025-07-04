@@ -9,20 +9,34 @@
 static llvm::LLVMContext ctx;
 static llvm::IRBuilder<> bldr(ctx);
 static std::unique_ptr<llvm::Module> mod;
+static llvm::GlobalVariable *closures;
+static llvm::GlobalVariable *closureptr;
+static const int num_of_closures = 32;
 
-LLVMKit::LLVMKit(const char* name) : modulename(name) {
+LLVMKit::LLVMKit(const char *name) : modulename(name) {
     mod = std::make_unique<llvm::Module>(modulename, ctx);
+
+    llvm::Type *i32 = llvm::Type::getInt32Ty(ctx);
+    llvm::StructType *st = llvm::StructType::create(ctx, "ClosureT");
+    st->setBody({i32, i32});
+    llvm::Type *t = llvm::ArrayType::get(st, num_of_closures);
+    llvm::ConstantAggregateZero *zero = llvm::ConstantAggregateZero::get(t);
+    closures = new llvm::GlobalVariable(*mod, t, false, llvm::GlobalVariable::InternalLinkage, zero, "closures");
+    closures->setAlignment(llvm::Align(4));
+
+    llvm::PointerType *pt = llvm::PointerType::get(t, 0);
+    closureptr = new llvm::GlobalVariable(*mod, pt, false, llvm::GlobalVariable::InternalLinkage, closures, "closureptr");
+    closureptr->setAlignment(llvm::Align(8));
 }
 
-/*
- case INT(Int)
- case ADD(I, I)
- case LET(I, T, T)
- case MakeCls(I, I, [I], T)
- //    case MakeCls(IdentX, L, [I], T) //(IdentX, ClosureX(Id.l, [Id.t]), T)
- //    case AppCls(I, [I]) // closure
- //    case AppDir(L, [I]) // direct call(top level)
- */
+void *LLVMKit::emitptrinc() const {
+    llvm::Type *st = llvm::StructType::getTypeByName(ctx, "ClosureT");
+    llvm::LoadInst *ptr = bldr.CreateLoad(bldr.getPtrTy(), closureptr, "clptr");
+    llvm::Value *ptrtmp = bldr.CreateInBoundsGEP(st, ptr, {bldr.getInt32(1)});
+    llvm::StoreInst *x = bldr.CreateStore(ptrtmp, closureptr);
+    return x;
+}
+
 void *LLVMKit::emitfunc(const char* name) const {
     // define i32 @name() {
     llvm::Function *fn = llvm::Function::Create(llvm::FunctionType::get(llvm::Type::getInt32Ty(ctx), 0),
@@ -30,8 +44,10 @@ void *LLVMKit::emitfunc(const char* name) const {
     // entry:
     llvm::BasicBlock *bb = llvm::BasicBlock::Create(ctx, "entry", fn);
     bldr.SetInsertPoint(bb);    // move insert point to the end of bb, ready to insert, needed?
+
     return fn;
 }
+
 
 
 void *LLVMKit::emitalloca(const char *name) const {
@@ -62,6 +78,10 @@ void *LLVMKit::emitret(const int value) const {
     llvm::ReturnInst *x = bldr.CreateRet(bldr.getInt32(value));
     return x;
 }
+void *LLVMKit::emitret(void) const {
+    llvm::ReturnInst *x = bldr.CreateRetVoid();
+    return x;
+}
 void *LLVMKit::emitadd(const void *lptr, const void *rptr, const char *name) const {
     llvm::LoadInst *l = bldr.CreateLoad(bldr.getInt32Ty(), (llvm::Value *)lptr, name);
     llvm::LoadInst *r = bldr.CreateLoad(bldr.getInt32Ty(), (llvm::Value *)rptr, name);
@@ -90,6 +110,12 @@ void *LLVMKit::emitcall(const void *callee, const void *ft, const char *name, co
     llvm::Value *arg = llvm::ConstantFP::get(llvm::Type::getDoubleTy(ctx), value);
     llvm::Value *args = {arg};
     llvm::CallInst *x = bldr.CreateCall((llvm::FunctionType *)ft, (llvm::Value *)callee, args, name);
+    return x;
+}
+
+void *LLVMKit::emitcall(const void *callee, const char *name) {
+    llvm::FunctionType *ft = llvm::FunctionType::get(llvm::Type::getInt32Ty(ctx), {}, false);
+    llvm::CallInst *x = bldr.CreateCall(ft, (llvm::Function *)callee, {}, name);
     return x;
 }
 
