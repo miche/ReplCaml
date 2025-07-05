@@ -30,7 +30,7 @@ public:
     void *emitcall(const void *callee, const char *name) const;
 
     void *emitalloca(const char *name) const;
-    void *emitstore(const void *ptr, const int value) const;
+    void *emitstore(const int value, const void *ptr) const;
     void *emitload(const void *ptr, const char *name) const;
     void *emitlet(const char *name, const int value) const;
 
