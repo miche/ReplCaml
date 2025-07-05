@@ -865,7 +865,7 @@ indirect enum Asm: CustomStringConvertible {
             self.ret = ret
         }
         var description: String {
-            return "(\(name) \(args) \(fargs) \(body) \(ret))"
+            return "(\(name) \(args.joined(separator: " "))/\(fargs.joined(separator: " ")) \(body))"
         }
     }
     var description: String {
@@ -875,6 +875,8 @@ indirect enum Asm: CustomStringConvertible {
             return "(LET \(x) \(e) in \(a))"
         }
     }
+    static let reg_cl: String = "closure_ptr"
+    static let reg_hp: String = "heap_ptr"
 }
 
 struct Virtual {
@@ -899,6 +901,7 @@ struct Virtual {
                  { t, x in return (t.0, t.1 + [x]) },
                  { t, x, _ in return (t.0 + [x], t.1) })
     }
+
     func expand(_ xts: [IdentX], _ ini: (Int, T),
                 _ addf: (Id.T, Int, Asm)->T,
                 _ addi: (Id.T, Typ, Int, Asm)->T) -> (Int, T) {
@@ -938,8 +941,8 @@ struct Virtual {
                                             {y, offset, store_fv in seq(.STDFi(y, xt.name, offset), store_fv) },
                                             {y, _, offset, store_fv in seq(.STi(y, xt.name, offset), store_fv) })
             let z = Id.genid("l")
-            return .LET(xt, .MOV("reg_hp" /* heap pointer */),
-                        .LET(IdentX("reg_hp", .INT), .ADDi("reg_hp", offset),
+            return .LET(xt, .MOV(Asm.reg_hp),
+                        .LET(IdentX(Asm.reg_hp, .INT), .ADDi(Asm.reg_hp, offset),
                              .LET(IdentX(z, .INT), .SETL(l),
                                   seq(.STi(z, xt.name, 0), store_fv))))
         case .AppCls(let x, let ys):
@@ -950,12 +953,15 @@ struct Virtual {
             return .ANS(.CALLDIR(x, i, f))
         }
     }
+
     func fletd(_ x: Id.T, _ e1: Asm.Exp, _ e2: Asm) -> T {
         return .LET(IdentX(x, .FLOAT), e1, e2)
     }
+
     func seq(_ e1: Asm.Exp, _ e2: Asm) -> T {
         return .LET(IdentX(Id.gentmp(.UNIT), .UNIT), e1, e2)
     }
+
     func h(_ f: ClosureT.Fundef) -> Asm.Fundef {
         let (it, ft) = separate(f.args)
         var env: E = [:]
@@ -963,8 +969,8 @@ struct Virtual {
         f.args.forEach { env[$0.name] = $0.typ }
         env[f.name.name] = f.name.typ
         let (offset, load) = expand(f.formal_fv, (4, g(&env, f.body)),
-                                    {z, offset, load in fletd(z, .LDDFi("reg_cl", offset), load) },
-                                    {z, t, offset, load in return .LET(IdentX(z, t), .LDi("reg_cl", offset), load) })
+                                    {z, offset, load in fletd(z, .LDDFi(Asm.reg_cl, offset), load) },
+                                    {z, t, offset, load in return .LET(IdentX(z, t), .LDi(Asm.reg_cl, offset), load) })
         if case .FUN(_, let t2) = f.name.typ {
             return Asm.Fundef(f.name.name, it, ft, load, t2)
         } else { fatalError() }
