@@ -11,7 +11,6 @@ public:
     
     void *entry(const char *name) const;
     void *arg(const void *fn, const int index) const;
-    //void *closure_arg(const int index, const char *name) const;  // TODO: remove
     void *closure_arg(const void *fn, const int index, const char *name) const;
 
     void *letset(const char *name, const int value) const;
