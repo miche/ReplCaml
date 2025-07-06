@@ -1,1 +1,28 @@
 .DS_Store
+
+# Xcode userdata
+*.xcodeproj/project.xcworkspace/xcuserdata/
+*.xcodeproj/xcuserdata/
+*.xcworkspace/xcuserdata/
+
+# Xcode build artifacts and caches
+DerivedData/
+*.hmap
+*.ipa
+*.dSYM.zip
+*.dSYM/
+
+# Xcode workspace and project files
+*.xcodeproj/project.xcworkspace/xcshareddata/IDEWorkspaceChecks.plist
+*.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/
+*.xcworkspace/xcshareddata/swiftpm/
+
+# Provisioning profiles
+*.mobileprovision
+*.provisionprofile
+
+# Fastlane
+fastlane/report.xml
+fastlane/Preview.html
+fastlane/screenshots/**/*.png
+fastlane/test_output
