@@ -13,12 +13,13 @@ public:
     void *arg(const void *fn, const int index) const;
     void *closure_arg(const void *fn, const int index, const char *name) const;
 
-    void *letset(const char *name, const int value) const;
-    void *letcalldir(const char *name, const void *callee, const void *w) const;
-    void *letcalldir(const char *name, const void *callee, const void *a, const void *w) const;
+    void *set(const char *name, const int value) const;
+    void *calldir(const char *name, const void *callee, const void *w) const;
+    void *calldir(const char *name, const void *callee, const void *a, const void *w) const;
 
-    void *ansadd(const void *l, const void *r) const;
-    void *anscallcls(const void *cl, const void *w) const;
+    void *ans(const void *value) const;
+    void *add(const void *l, const void *r) const;
+    void *callcls(const void *cl, const void *w) const;
 
     void dump() const;
 

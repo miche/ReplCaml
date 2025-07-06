@@ -16,7 +16,9 @@ public:
     llvm::GlobalVariable *closureptr;
     const int num_of_closures = 32;
 
-    llvm::Type *ptr_t;
+    llvm::Function::LinkageTypes defaultLinkage = llvm::Function::InternalLinkage;
+
+    llvm::PointerType *ptr_t;
     llvm::Type *i1_t;
     llvm::Type *i32_t;
     llvm::Type *i64_t;
@@ -37,20 +39,21 @@ public:
     inline llvm::StoreInst *store(const void *value, const void *ptr, const char *name) { return bldr.CreateStore((llvm::Value *)value, (llvm::Value *)ptr, name); };
     inline llvm::StoreInst *store(const void *value, const void *ptr) { return bldr.CreateStore((llvm::Value *)value, (llvm::Value *)ptr); };
     inline llvm::Value *gep(const void *typ, const void *ptr, llvm::ArrayRef<llvm::Value *> index) { return bldr.CreateInBoundsGEP((llvm::Type *)typ, (llvm::Value *)ptr, index); };
+    inline llvm::ReturnInst *ans(const void *value) { return bldr.CreateRet((llvm::Value *)value); };
     inline llvm::ReturnInst *ret(const void *value) { return bldr.CreateRet((llvm::Value *)value); };
     inline llvm::ReturnInst *ret(const int value) { return bldr.CreateRet(i32(value)); };
     inline llvm::ReturnInst *ret(void) { return bldr.CreateRetVoid(); };
     inline llvm::CallInst *call(const void *callee, llvm::ArrayRef<llvm::Value *> args, const char *name) { return bldr.CreateCall(((llvm::Function *)callee)->getFunctionType(), (llvm::Function *)callee, args, name); }
     inline llvm::CallInst *call(const void *callee, llvm::ArrayRef<llvm::Value *> args) { return bldr.CreateCall(((llvm::Function *)callee)->getFunctionType(), (llvm::Function *)callee, args); }
     inline llvm::CallInst *call(llvm::FunctionType *ft, const void *callee, llvm::ArrayRef<llvm::Value *> args) { return bldr.CreateCall(ft, (llvm::Function *)callee, args); }
-    inline llvm::CallInst *tail(llvm::CallInst *ln) { ln->setTailCall(); return ln; }
-    inline llvm::CallInst *fastcc(llvm::CallInst *ln) { ln->setCallingConv(llvm::CallingConv::Fast); return ln; }
-    inline llvm::CallInst *tailcc(llvm::CallInst *ln) { ln->setCallingConv(llvm::CallingConv::Tail); return ln; }
+    inline llvm::CallInst *tail(llvm::CallInst *ln) const { ln->setTailCall(); return ln; }
+    inline llvm::CallInst *fastcc(llvm::CallInst *ln) const { ln->setCallingConv(llvm::CallingConv::Fast); return ln; }
+    inline llvm::CallInst *tailcc(llvm::CallInst *ln) const { ln->setCallingConv(llvm::CallingConv::Tail); return ln; }
     inline llvm::UnreachableInst *unreachable() { return bldr.CreateUnreachable(); }
     inline llvm::Argument *arg(const void *fn, const int index) const { return ((llvm::Function *)fn)->getArg(index); }
     inline llvm::LoadInst *closure_arg(const void *fn, const int index, const char *name, llvm::Type *arg_t) { return load(arg_t, gep(cl_t, arg(fn, 0), {i32(0), i32(index + 1)}), name); }
-    inline llvm::Function *fastcc(llvm::Function *fn) { fn->setCallingConv(llvm::CallingConv::Fast); return fn; }
-    inline llvm::Function *tailcc(llvm::Function *fn) { fn->setCallingConv(llvm::CallingConv::Tail); return fn; }
+    inline llvm::Function *fastcc(llvm::Function *fn) const { fn->setCallingConv(llvm::CallingConv::Fast); return fn; }
+    inline llvm::Function *tailcc(llvm::Function *fn) const { fn->setCallingConv(llvm::CallingConv::Tail); return fn; }
 
     inline llvm::Function *func(const char *name, llvm::Type *ret_t, llvm::Function::LinkageTypes linkage) {
         llvm::FunctionType *ft = llvm::FunctionType::get(ret_t, false);
@@ -59,13 +62,13 @@ public:
     }
     inline llvm::Function *func(const char *name, llvm::Type *ret_t) {
         llvm::FunctionType *ft = llvm::FunctionType::get(ret_t, {ptr_t}, false);
-        llvm::Function *fn = llvm::Function::Create(ft, llvm::Function::InternalLinkage, name, mod);
+        llvm::Function *fn = llvm::Function::Create(ft, defaultLinkage, name, mod);
         arg(fn, 0)->setName("cl_ptr");
         return fn;
     }
     inline llvm::Function *func(const char *name, llvm::Type *ret_t, const char *w, llvm::Type *arg_t) {
         llvm::FunctionType *ft = llvm::FunctionType::get(ret_t, {ptr_t, arg_t}, false);
-        llvm::Function *fn = llvm::Function::Create(ft, llvm::Function::InternalLinkage, name, mod);
+        llvm::Function *fn = llvm::Function::Create(ft, defaultLinkage, name, mod);
         arg(fn, 0)->setName("cl_ptr"); arg(fn, 1)->setName(w);
         return fn;
     }
@@ -73,12 +76,26 @@ public:
 
     inline llvm::Value *add(const void *a, const void *w) { return bldr.CreateAdd((llvm::Value *)a, (llvm::Value *)w); };
 
+    inline void *makeclosure(const void *fn, const void *w) {
+        llvm::LoadInst *ptr = load(ptr_t, closureptr);
+        store(fn, gep(cl_t, ptr, {i32(0), i32(0)}));
+        store(w, gep(cl_t, ptr, {i32(0), i32(1)}));
+        store(gep(cl_t, ptr, {i32(1)}), closureptr);
+        return ptr;
+    }
+    inline void *callclosure(const void *cl, const void *w) {
+        llvm::Value *fnp = gep(cl_t, cl, {i32(0), i32(0)});
+        llvm::Function *fn = (llvm::Function *)load(ptr_t, fnp);
+        llvm::FunctionType *ft = llvm::FunctionType::get(i32_t, {ptr_t, i32_t}, 0);
+        return call(ft, fn, {(llvm::Value *)cl, (llvm::Value *)w});
+    }
+
     inline void dump() { mod.print(llvm::outs(), nullptr); }
 };
 
 LLVMKit::Impl::Impl(const char *name): mod(name, ctx), bldr(llvm::IRBuilder<>(ctx)) {
-    nullp = llvm::ConstantPointerNull::get(llvm::PointerType::get(ctx, 0));
     ptr_t = llvm::PointerType::get(ctx, 0);
+    nullp = llvm::ConstantPointerNull::get(ptr_t);
     i1_t = llvm::Type::getInt1Ty(ctx);
     i32_t = llvm::Type::getInt32Ty(ctx);
     i64_t = llvm::Type::getInt64Ty(ctx);
@@ -89,10 +106,10 @@ LLVMKit::Impl::Impl(const char *name): mod(name, ctx), bldr(llvm::IRBuilder<>(ct
     cl_t->setBody({ptr_t, i32_t}); // TODO: more arguments
     llvm::Type *a_t = llvm::ArrayType::get(cl_t, num_of_closures); // ClosureT[num_of_closures]
     llvm::ConstantAggregateZero *zero = llvm::ConstantAggregateZero::get(a_t);
-    closures = new llvm::GlobalVariable(mod, a_t, false, llvm::GlobalVariable::InternalLinkage, zero, "closures");
+    closures = new llvm::GlobalVariable(mod, a_t, false, defaultLinkage, zero, "closures");
     closures->setAlignment(llvm::Align(4));
     llvm::PointerType *stp_t = llvm::PointerType::get(a_t, 0); // ClosureT *
-    closureptr = new llvm::GlobalVariable(mod, stp_t, false, llvm::GlobalVariable::InternalLinkage, closures, "closureptr");
+    closureptr = new llvm::GlobalVariable(mod, stp_t, false, defaultLinkage, closures, "closureptr");
     closureptr->setAlignment(llvm::Align(8));
 }
 
@@ -105,17 +122,11 @@ void *LLVMKit::makecls(const char *name, const char *w, const bool ret_fun) cons
     impl->bb(fn, "entry");
     return fn;
 }
-
-void *LLVMKit::makeclosure(const void *fn, const void *w) const { // TODO: -> Impl
-    llvm::LoadInst *ptr = impl->load(impl->ptr_t, impl->closureptr);
-    impl->store(fn, impl->gep(impl->cl_t, ptr, {impl->i32(0), impl->i32(0)}));
-    impl->store(w, impl->gep(impl->cl_t, ptr, {impl->i32(0), impl->i32(1)}));
-    impl->store(impl->gep(impl->cl_t, ptr, {impl->i32(1)}), impl->closureptr);
-    return ptr;
+void *LLVMKit::makeclosure(const void *fn, const void *w) const {
+    return impl->makeclosure(fn, w);
 }
-
 void *LLVMKit::entry(const char* name) const {
-    llvm::Function *fn = impl->func(name, impl->i32_t, llvm::Function::InternalLinkage);
+    llvm::Function *fn = impl->func(name, impl->i32_t, impl->defaultLinkage);
     impl->bb(fn, "entry");
     return fn;
 }
@@ -126,32 +137,30 @@ void *LLVMKit::closure_arg(const void *fn, const int index, const char *name) co
     return impl->closure_arg(fn, index, name, impl->i32_t);
 }
 
-void *LLVMKit::letset(const char *name, const int value) const {
+void *LLVMKit::set(const char *name, const int value) const {
     return impl->i32(value);
 }
-void *LLVMKit::letcalldir(const char *name, const void *callee, const void *w) const {
+void *LLVMKit::calldir(const char *name, const void *callee, const void *w) const {
     return impl->call(callee, {impl->nullp, (llvm::Value *)w}, name);
 }
-void *LLVMKit::letcalldir(const char *name, const void *callee, const void *a, const void *w) const {
+void *LLVMKit::calldir(const char *name, const void *callee, const void *a, const void *w) const {
     return impl->call(callee, {impl->nullp, (llvm::Value *)a, (llvm::Value *)w}, name);
 }
 
-void *LLVMKit::ansadd(const void *a, const void *w) const {
-    return impl->ret(impl->add(a, w));
+void *LLVMKit::add(const void *a, const void *w) const {
+    return impl->add(a, w);
 }
-void *LLVMKit::anscallcls(const void *cl, const void *w) const { // TODO: -> Impl
-    llvm::Value *fnp = impl->gep(impl->cl_t, cl, {impl->i32(0), impl->i32(0)});
-    llvm::Function *fn = (llvm::Function *)impl->load(impl->ptr_t, fnp);
-    llvm::FunctionType *ft = llvm::FunctionType::get(impl->i32_t, {impl->ptr_t, impl->i32_t}, 0);   // TODO: function should be installed!
-    return impl->ret(impl->call(ft, fn, {(llvm::Value *)cl, (llvm::Value *)w}));
+void *LLVMKit::callcls(const void *cl, const void *w) const {
+    return impl->callclosure(cl, w);
 }
-
+void *LLVMKit::ans(const void *value) const {
+    return impl->ans(value);
+}
 // -----
 void LLVMKit::dump() const {
     impl->dump();
 }
 
-// function/call/ret
 void *LLVMKit::emitfunc(const char* name) const {
     llvm::Function *fn = impl->func(name, impl->i32_t, llvm::Function::ExternalLinkage);
     impl->bb(fn, "entry");
