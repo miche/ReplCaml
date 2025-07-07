@@ -34,6 +34,8 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		C616B0142E1BA9620037BA89 /* LICENSE */ = {isa = PBXFileReference; lastKnownFileType = text; path = LICENSE; sourceTree = "<group>"; };
+		C616B0152E1BA96D0037BA89 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		C64A10532E125B44007779CB /* .gitignore */ = {isa = PBXFileReference; lastKnownFileType = text; path = .gitignore; sourceTree = "<group>"; };
 		C6A09C5F2E03B15B004D6D12 /* ReplCaml.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ReplCaml.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		C6E330752E164BA7008C0B78 /* Bridging */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = Bridging; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -75,6 +77,8 @@
 		C6A09C562E03B15B004D6D12 = {
 			isa = PBXGroup;
 			children = (
+				C616B0142E1BA9620037BA89 /* LICENSE */,
+				C616B0152E1BA96D0037BA89 /* README.md */,
 				C64A10532E125B44007779CB /* .gitignore */,
 				C6A09C612E03B15B004D6D12 /* ReplCaml */,
 				C6E330762E164BA7008C0B78 /* Bridging */,
@@ -360,6 +364,7 @@
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				REGISTER_APP_GROUPS = YES;
 				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_OBJC_BRIDGING_HEADER = "ReplCaml/ReplCaml-Bridging-Header.h";
 				SWIFT_VERSION = 6.0;
 			};
 			name = Debug;
@@ -385,6 +390,7 @@
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				REGISTER_APP_GROUPS = YES;
 				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_OBJC_BRIDGING_HEADER = "ReplCaml/ReplCaml-Bridging-Header.h";
 				SWIFT_VERSION = 6.0;
 			};
 			name = Release;

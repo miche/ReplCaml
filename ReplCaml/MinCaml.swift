@@ -866,7 +866,7 @@ indirect enum Asm: CustomStringConvertible {
             }
         }
     }
-    case ANS(Exp) // TODO: -> %tmp = ext; ret type %tmp
+    case ANS(Exp)
     case LET(IdentX, Exp, Asm)
 
     struct Fundef: CustomStringConvertible {
@@ -900,8 +900,6 @@ indirect enum Asm: CustomStringConvertible {
 struct Virtual {
     typealias T = Asm
     typealias E = [String: Typ]
-
-    func align(_ i: Int) -> Int { if i % 8 == 0 { return i } else { return i + 4 } }
 
     func classify<ACC>(_ xts: [IdentX], _ ini: ACC,
                   _ addf: (ACC, Id.T)->ACC,
@@ -1006,19 +1004,50 @@ struct Virtual {
 struct Emit {
     typealias T = Asm
 
+    private let llvm = LLVMKit("mincaml")
     public var ir: String = "emit"
 
     func h(_ fd: Asm.Fundef) {
-        //declare void @llvm.init.trampoline(ptr <tramp>, ptr <func>, ptr <nval>)
+        var env: [String: String] = [:]
+//        makecls(fd.name, fd.args, fd.ret)
+        if case .FUN(let atyp, let rtyp) = fd.ret {
+            switch rtyp {
+            case .FUN: break // ret_ptr = true
+            case .UNIT: break // ret void
+            case .BOOL: break // i1
+            case .INT: break // i32
+            case .FLOAT: break // dbl
+            case .VAR(_): break // err?
+            }
+        }
 
+        // let fn = llvm.makecls(fd.name, fd.args)
+        fd.args.forEach { env[$0] = "i32" } //  llvm.arg(fn, 0)
+        fd.fargs.forEach { env[$0] = "i32" }  // closure_arg(fn, 0, "arg")
+        // _ = llvm.ans(llvm.makeclosure(adder, x1))
     }
-    func g(_ e: T) -> T {
-        return e
+    func g2(_ env: inout [String: UnsafeRawPointer], _ n: IdentX?, _ e: Asm.Exp) -> UnsafeRawPointer {
+        switch e {
+        case .SET(let v): return llvm.set(n?.name, Int32(v))
+        case .ADD(let l, let r): return llvm.add(env[l]!, env[r]!)
+        case .NOP: return llvm.nop()
+        case .MUL(let l, let r): return llvm.mul(env[l]!, env[r]!)
+        case .CALLCLS(let name, let arg, let fb): return llvm.callcls(name, arg[0])
+        case .CALLDIR(let name, let arg, let fb): return llvm.calldir(name, name, arg[0])
+        default: return llvm.nop()
+        }
+    }
+    func g(_ env: inout [String: UnsafeRawPointer], _ e: Asm) -> UnsafeRawPointer {
+        switch e {
+        case .ANS(let x): return llvm.ans(g2(&env, nil, x)) // const void * == UnsafeRawPointer
+        case .LET(let n, let v, let b): env[n.name] = g2(&env, n, v); return g(&env, b)
+        }
     }
 
     init(_ fundefs: [Asm.Fundef], _ e: T) {
         fundefs.forEach { h($0) }
-        _ = g(e)
+        var env: [String: UnsafeRawPointer] = [:]
+        _ = g(&env, e)
         ir = "ok"
     }
 }
