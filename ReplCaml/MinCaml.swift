@@ -1,9 +1,18 @@
 import Foundation
 
 public final class Id {
+    actor Counter {
+        private var counter = 0
+
+        func next() -> Int {
+            counter += 1
+            return counter
+        }
+    }
     public typealias T = String
     public typealias L = String
-    private static var counter = 0
+    nonisolated(unsafe) private static var counter = 0 // TODO: remove
+    private static let counterA = Counter()
 
     init() {}
     static func genid(_ s: String) -> T {
@@ -12,7 +21,16 @@ public final class Id {
     }
     static func gentmp(_ t: Typ) -> T {
         counter += 1
-        return "$\(t.rep)\(Id.counter)"
+        return ".\(t.rep)\(Id.counter)"
+    }
+    // TODO: replace above with those
+    static func genidA(_ s: String) async -> T {
+        let count = await Id.counterA.next()
+        return "\(s).\(count)"
+    }
+    static func gentmpA(_ t: Typ) async -> T {
+        let count = await Id.counterA.next()
+        return ".\(t.rep)\(count)"
     }
 }
 

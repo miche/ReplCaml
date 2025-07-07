@@ -73,6 +73,7 @@ public:
         return fn;
     }
     inline llvm::BasicBlock *bb(llvm::Function *fn, const char *name) { llvm::BasicBlock *bb = llvm::BasicBlock::Create(ctx, name, fn); bldr.SetInsertPoint(bb); return bb; }
+    inline llvm::Function *appendbb(llvm::Function *fn, const char *name) { bb(fn, name); return fn; }
 
     inline llvm::Value *add(const void *a, const void *w) { return bldr.CreateAdd((llvm::Value *)a, (llvm::Value *)w); };
 
@@ -118,17 +119,13 @@ LLVMKit::Impl::Impl(const char *name): mod(name, ctx), bldr(llvm::IRBuilder<>(ct
 LLVMKit::LLVMKit(const char *name): impl(new Impl(name)) { }
 
 void *LLVMKit::makecls(const char *name, const char *w, const bool ret_fun) const {
-    llvm::Function *fn = impl->func(name, ret_fun ? impl->ptr_t : impl->i32_t, w, impl->i32_t);
-    impl->bb(fn, "entry");
-    return fn;
+    return impl->appendbb(impl->func(name, ret_fun ? impl->ptr_t : impl->i32_t, w, impl->i32_t), "entry");
 }
 void *LLVMKit::makeclosure(const void *fn, const void *w) const {
     return impl->makeclosure(fn, w);
 }
 void *LLVMKit::entry(const char* name) const {
-    llvm::Function *fn = impl->func(name, impl->i32_t, impl->defaultLinkage);
-    impl->bb(fn, "entry");
-    return fn;
+    return impl->appendbb(impl->func(name, impl->i32_t, impl->defaultLinkage), "entry");
 }
 void *LLVMKit::arg(const void *fn, const int index) const {
     return impl->arg(fn, index + 1);
@@ -162,9 +159,7 @@ void LLVMKit::dump() const {
 }
 
 void *LLVMKit::emitfunc(const char* name) const {
-    llvm::Function *fn = impl->func(name, impl->i32_t, llvm::Function::ExternalLinkage);
-    impl->bb(fn, "entry");
-    return fn;
+    return impl->appendbb(impl->func(name, impl->i32_t, llvm::Function::ExternalLinkage), name);
 }
 
 void *LLVMKit::emitret(const void *ptr) const {
@@ -180,7 +175,6 @@ void *LLVMKit::emitcall(const void *callee, const char *name) const {
     return impl->call(callee, {}, name);
 }
 
-// stack
 void *LLVMKit::emitalloca(const char *name) const {
     return impl->alloc(impl->i32_t, name);
 }

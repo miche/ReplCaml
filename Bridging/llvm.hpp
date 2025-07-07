@@ -1,3 +1,6 @@
+#include "swift/bridging"
+#include "Bridging-Swift.h"
+
 #pragma once
 
 class LLVMKit {
