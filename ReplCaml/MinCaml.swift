@@ -1,4 +1,5 @@
 import Foundation
+import CxxStdlib
 
 public final class Id {
     actor Counter {
@@ -1007,37 +1008,38 @@ struct Emit {
     private let llvm = LLVMKit("mincaml")
     public var ir: String = "emit"
 
-    func h(_ fd: Asm.Fundef) {
-        var env: [String: String] = [:]
-//        makecls(fd.name, fd.args, fd.ret)
-        if case .FUN(let atyp, let rtyp) = fd.ret {
-            switch rtyp {
-            case .FUN: break // ret_ptr = true
-            case .UNIT: break // ret void
-            case .BOOL: break // i1
-            case .INT: break // i32
-            case .FLOAT: break // dbl
-            case .VAR(_): break // err?
+    func h(_ env: inout [String: OpaquePointer?], _ fd: Asm.Fundef) {
+        guard case .FUN(let at, let rt) = fd.ret else { fatalError() }
+        var rett = llvm.i32
+        switch rt {
+        case .FUN: rett = llvm.ptr; break
+        case .UNIT: rett = llvm.unit; break
+        case .FLOAT: rett = llvm.dbl; break
+        default: rett = llvm.i32; break
+        }
+        if fd.args.count == 1 {
+            let f = llvm.makecls(fd.name, fd.args[0], rett)
+            env[fd.name] = f
+            env[fd.args[0]] = llvm.arg(f, 0) //t2v(at[0])
+            if fd.fargs.count == 1 {
+                env[fd.fargs[0]] = llvm.closure_arg(f, 0, fd.fargs[0])
             }
         }
-
-        // let fn = llvm.makecls(fd.name, fd.args)
-        fd.args.forEach { env[$0] = "i32" } //  llvm.arg(fn, 0)
-        fd.fargs.forEach { env[$0] = "i32" }  // closure_arg(fn, 0, "arg")
-        // _ = llvm.ans(llvm.makeclosure(adder, x1))
+        // _ = llvm.ans(llvm.makeclosure(adder, x1)) // TODO: implement closure feature
+        _ = g(&env, fd.body)
     }
-    func g2(_ env: inout [String: UnsafeRawPointer], _ n: IdentX?, _ e: Asm.Exp) -> UnsafeRawPointer {
+    func g2(_ env: inout [String: OpaquePointer?], _ n: IdentX?, _ e: Asm.Exp) -> OpaquePointer {
         switch e {
         case .SET(let v): return llvm.set(n?.name, Int32(v))
         case .ADD(let l, let r): return llvm.add(env[l]!, env[r]!)
         case .NOP: return llvm.nop()
         case .MUL(let l, let r): return llvm.mul(env[l]!, env[r]!)
-        case .CALLCLS(let name, let arg, let fb): return llvm.callcls(name, arg[0])
-        case .CALLDIR(let name, let arg, let fb): return llvm.calldir(name, name, arg[0])
+        case .CALLCLS(let name, let arg, let fb): return llvm.callcls(env[name]!, env[arg[0]]!!)
+        case .CALLDIR(let name, let arg, let fb): return llvm.calldir(name, env[name]!, env[arg[0]]!!)
         default: return llvm.nop()
         }
     }
-    func g(_ env: inout [String: UnsafeRawPointer], _ e: Asm) -> UnsafeRawPointer {
+    func g(_ env: inout [String: OpaquePointer?], _ e: Asm) -> OpaquePointer {
         switch e {
         case .ANS(let x): return llvm.ans(g2(&env, nil, x)) // const void * == UnsafeRawPointer
         case .LET(let n, let v, let b): env[n.name] = g2(&env, n, v); return g(&env, b)
@@ -1045,10 +1047,13 @@ struct Emit {
     }
 
     init(_ fundefs: [Asm.Fundef], _ e: T) {
-        fundefs.forEach { h($0) }
-        var env: [String: UnsafeRawPointer] = [:]
-        _ = g(&env, e)
-        ir = "ok"
+        var env: [String: OpaquePointer?] = [:]
+        fundefs.forEach { h(&env, $0) }
+        let pg = g(&env, e)
+
+        _ = llvm.emitfunc("main")
+        _ = llvm.emitret(llvm.emitcall(pg))
+        ir = String(llvm.dump())
     }
 }
 
