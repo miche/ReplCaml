@@ -829,14 +829,14 @@ indirect enum Asm: CustomStringConvertible {
 //        case LD(Id.T, Id.T)
         case LDi(Id.T, Int)
 //        case ST(Id.T, Id.T, Id.T)
-        case STi(Id.T, Id.T, Int)
+        case STi(Id.T, IdentX, Int)
         case MUL(Id.T, Id.T)
 //        case LDDF(Id.T, Id.T)
         case LDDFi(Id.T, Int)
 //        case STDF(Id.T, Id.T, Id.T)
         case STDFi(Id.T, Id.T, Int)
-        case CALLCLS(Id.T, [Id.T], [Id.T])
-        case CALLDIR(Id.T, [Id.T], [Id.T])
+        case CALLCLS(Id.T, [IdentX])
+        case CALLDIR(Id.T, [IdentX])
 //        case SAVE(Id.T, Id.T)
 //        case RESTORE(Id.T)
 
@@ -860,8 +860,8 @@ indirect enum Asm: CustomStringConvertible {
             case .LDDFi(let i, let j): return "LDDFi \(i), \(j);"
 //            case .STDF(let i, let j, let k): return "STDF \(i), \(j), \(k);"    // Store Double Floating-Point register
             case .STDFi(let i, let j, let k): return "STDFi \(i), \(j), \(k);"
-            case .CALLCLS(let i, let j, let k): return "CALLCLS \(i) \(j.joined(separator: ", "))/\(k.joined(separator: ", "));"
-            case .CALLDIR(let i, let j, let k): return "CALLDIR \(i) \(j.joined(separator: ", "))/\(k.joined(separator: ", "));"
+            case .CALLCLS(let i, let j): return "CALLCLS \(i) \(j.map(\.description).joined(separator: ", "));"
+            case .CALLDIR(let i, let j): return "CALLDIR \(i) \(j.map(\.description).joined(separator: ", "));"
 //            case .SAVE(let i, let j): return "SAVE \(i), \(j);"
 //            case .RESTORE(let i): return "RESTORE \(i);"
             }
@@ -872,19 +872,17 @@ indirect enum Asm: CustomStringConvertible {
 
     struct Fundef: CustomStringConvertible {
         let name: Id.L
-        let args: [String]
-        let fargs: [String]
+        let args: [IdentX]
         let body: Asm
         let ret: Typ
-        init(_ name: Id.L, _ args: [String], _ fargs: [String], _ body: Asm, _ ret: Typ) {
+        init(_ name: Id.L, _ args: [IdentX], _ body: Asm, _ ret: Typ) {
             self.name = name
             self.args = args
-            self.fargs = fargs
             self.body = body
             self.ret = ret
         }
         var description: String {
-            return "(\(name) \(args.joined(separator: " "))/\(fargs.joined(separator: " ")) \(body))"
+            return "(\(name) \(args.map(\.description).joined(separator: " ")) \(body))"
         }
     }
     var description: String {
@@ -901,31 +899,6 @@ indirect enum Asm: CustomStringConvertible {
 struct Virtual {
     typealias T = Asm
     typealias E = [String: Typ]
-
-    func classify<ACC>(_ xts: [IdentX], _ ini: ACC,
-                  _ addf: (ACC, Id.T)->ACC,
-                  _ addi: (ACC, Id.T, Typ)->ACC) -> ACC {
-        return xts.reduce(ini) { acc, xt in
-            switch xt.typ {
-            case .UNIT: return acc
-            case .FLOAT: return addf(acc, xt.name)
-            default: return addi(acc, xt.name, xt.typ)
-            }
-        }
-    }
-    func separate(_ xts: [IdentX]) -> ([Id.T], [Id.T]) {
-        classify(xts, ([], []),
-                 { t, x in return (t.0, t.1 + [x]) },
-                 { t, x, _ in return (t.0 + [x], t.1) })
-    }
-
-    func expand(_ xts: [IdentX], _ ini: (Int, T),
-                _ addf: (Id.T, Int, Asm)->T,
-                _ addi: (Id.T, Typ, Int, Asm)->T) -> (Int, T) {
-        return classify(xts, ini,
-                        { oa, x in return (oa.0 + 8, addf(x, oa.0, oa.1)) },
-                        { oa, x, t in return (oa.0 + 4, addi(x, t, oa.0, oa.1))} )
-    }
 
     func concat(_ e1: T, _ xt: IdentX, _ e2: T) -> T {
         switch e1 {
@@ -954,42 +927,39 @@ struct Virtual {
         case .MakeCls(let xt, let l, let fv, let b):
             env[xt.name] = xt.typ
             let e2 = g(&env, b)
-            let (offset, store_fv) = expand(fv.map {IdentX($0, env[$0]!)}, (4, e2),
-                                            {y, offset, store_fv in seq(.STDFi(y, xt.name, offset), store_fv) },
-                                            {y, _, offset, store_fv in seq(.STi(y, xt.name, offset), store_fv) })
+            let (offset, store_fv) = fv.map {IdentX($0, env[$0]!)}.reduce((4, e2)) { acc, xt in
+                if case .UNIT = xt.typ { return acc }
+                else { return (acc.0 + 4, .LET(IdentX(Id.gentmp(.UNIT), .UNIT), .STi(xt.name, xt, acc.0), acc.1)) }
+            }
             let z = Id.genid("l")
             return .LET(xt, .MOV(Asm.reg_hp),
                         .LET(IdentX(Asm.reg_hp, .INT), .ADDi(Asm.reg_hp, offset),
                              .LET(IdentX(z, .INT), .SETL(l),
-                                  seq(.STi(z, xt.name, 0), store_fv))))
+                                  .LET(IdentX(Id.gentmp(.UNIT), .UNIT), .STi(z, xt, 0), store_fv))))
         case .AppCls(let x, let ys):
-            let (i, f) = separate(ys.map { IdentX($0, env[$0]!) })
-            return .ANS(.CALLCLS(x, i, f))
+            return .ANS(.CALLCLS(x, ys.map { IdentX($0, env[$0]!) }))
         case .AppDir(let x, let ys):
-            let (i, f) = separate(ys.map { IdentX($0, env[$0]!) })
-            return .ANS(.CALLDIR(x, i, f))
+            return .ANS(.CALLDIR(x, ys.map { IdentX($0, env[$0]!) }))
+        }
+    }
+    func expand(_ xts: [IdentX], _ ini: (Int, T), _ addi: (Id.T, Typ, Int, Asm)->T) -> (Int, T) {
+        return xts.reduce(ini) { acc, xt in
+            if case .UNIT = xt.typ { return acc }
+            else { return (acc.0 + 4, addi(xt.name, xt.typ, acc.0, acc.1)) }
         }
     }
 
-    func fletd(_ x: Id.T, _ e1: Asm.Exp, _ e2: Asm) -> T {
-        return .LET(IdentX(x, .FLOAT), e1, e2)
-    }
-
-    func seq(_ e1: Asm.Exp, _ e2: Asm) -> T {
-        return .LET(IdentX(Id.gentmp(.UNIT), .UNIT), e1, e2)
-    }
-
     func h(_ f: ClosureT.Fundef) -> Asm.Fundef {
-        let (it, ft) = separate(f.args)
         var env: E = [:]
         f.formal_fv.forEach { env[$0.name] = $0.typ }
         f.args.forEach { env[$0.name] = $0.typ }
         env[f.name.name] = f.name.typ
-        let (offset, load) = expand(f.formal_fv, (4, g(&env, f.body)),
-                                    {z, offset, load in fletd(z, .LDDFi(Asm.reg_cl, offset), load) },
-                                    {z, t, offset, load in return .LET(IdentX(z, t), .LDi(Asm.reg_cl, offset), load) })
+        let (_, load) = f.formal_fv.reduce((4, g(&env, f.body))) { acc, xt in
+            if case .UNIT = xt.typ { return acc }
+            else { return (acc.0 + 4, .LET(xt, .LDi(Asm.reg_cl, acc.0), acc.1)) }
+        }
         if case .FUN(_, let t2) = f.name.typ {
-            return Asm.Fundef(f.name.name, it, ft, load, t2)
+            return Asm.Fundef(f.name.name, f.args, load, t2)
         } else { fatalError() }
     }
 
@@ -1018,12 +988,9 @@ struct Emit {
         default: rett = llvm.i32; break
         }
         if fd.args.count == 1 {
-            let f = llvm.makecls(fd.name, fd.args[0], rett)
+            let f = llvm.makecls(fd.name, fd.args[0].name, rett)
             env[fd.name] = f
-            env[fd.args[0]] = llvm.arg(f, 0) //t2v(at[0])
-            if fd.fargs.count == 1 {
-                env[fd.fargs[0]] = llvm.closure_arg(f, 0, fd.fargs[0])
-            }
+            env[fd.args[0].name] = llvm.arg(f, 0) //t2v(at[0])
         }
         // _ = llvm.ans(llvm.makeclosure(adder, x1)) // TODO: implement closure feature
         _ = g(&env, fd.body)
@@ -1034,14 +1001,14 @@ struct Emit {
         case .ADD(let l, let r): return llvm.add(env[l]!, env[r]!)
         case .NOP: return llvm.nop()
         case .MUL(let l, let r): return llvm.mul(env[l]!, env[r]!)
-        case .CALLCLS(let name, let arg, let fb): return llvm.callcls(env[name]!, env[arg[0]]!!)
-        case .CALLDIR(let name, let arg, let fb): return llvm.calldir(name, env[name]!, env[arg[0]]!!)
+        case .CALLCLS(let name, let arg): return llvm.callcls(env[name]!, env[arg[0].name]!!)
+        case .CALLDIR(let name, let arg): return llvm.calldir(name, env[name]!, env[arg[0].name]!!)
         default: return llvm.nop()
         }
     }
     func g(_ env: inout [String: OpaquePointer?], _ e: Asm) -> OpaquePointer {
         switch e {
-        case .ANS(let x): return llvm.ans(g2(&env, nil, x)) // const void * == UnsafeRawPointer
+        case .ANS(let x): return llvm.ans(g2(&env, nil, x))
         case .LET(let n, let v, let b): env[n.name] = g2(&env, n, v); return g(&env, b)
         }
     }
@@ -1093,8 +1060,8 @@ struct MinCaml {
             let x10 = Virtual(x9.toplevel, x9.e) // do nothing
             x10.fundefs.forEach { out.append(($0.description, "-")) }
             out.append((x10.e.description, "Virtual"))
-            let x11 = Emit(x10.fundefs, x10.e)
-            out.append((x11.ir, "Emit"))
+//            let x11 = Emit(x10.fundefs, x10.e)
+//            out.append((x11.ir, "Emit"))
         }
         return out
     }
