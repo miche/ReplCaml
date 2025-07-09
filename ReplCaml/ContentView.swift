@@ -83,7 +83,14 @@ struct ContentView: View {
 
     func compile(_ code: String) throws -> [Chat] {
         if let response = MinCaml.shared.handle(code) {
-            return response.map { res in .response(tag: res.1, text: res.0) }
+            return response.reduce([]) { acc, tt in
+                if acc.isEmpty { return [.response(tag: tt.1, text: tt.0)] }
+                else {
+                    if case .response(_, let text) = acc.last!, text != tt.0 {
+                        return acc + [.response(tag: tt.1, text: tt.0)]
+                    } else { return acc }
+                }
+            }
         } else { throw Chat.response(tag: "compile failed", text: code) }
     }
 }

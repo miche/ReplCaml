@@ -22,6 +22,7 @@ public:
     value_t nop(void) const;
     value_t ans(value_t value) const;
     value_t set(str_t name, const int value) const;
+    value_t setl(str_t name, value_t value) const;
     value_t add(value_t a, value_t w) const;
     value_t mul(value_t a, value_t w) const;
     value_t calldir(str_t name, func_t callee, value_t w) const;
@@ -35,6 +36,11 @@ public:
     func_t emitfunc(str_t name) const;
     value_t emitcall(func_t link) const;
     value_t emitret(value_t value) const;
+
+    //value_t emitload(type_t typ, value_t ptr) const;
+    //value_t gep(value_t ptr, int index, int field) const;
+    //value_t emitstore(type_t typ, value_t value, value_t ptr, int offset) const;
+
     std::string dump(void) const;
 
     type_t i32;

@@ -145,6 +145,10 @@ func_t LLVMKit::emitfunc(str_t name) const { return impl->appendbb(impl->func(na
 value_t LLVMKit::emitcall(func_t link) const { return impl->call(link, {}); }
 value_t LLVMKit::emitret(value_t value) const { return impl->ret(value); }
 
+//value_t LLVMKit::emitload(type_t typ, value_t ptr) const { return impl->load(typ, ptr); }
+//value_t LLVMKit::gep(value_t ptr, int index, int field) const { return impl->gep(impl->cl_t, ptr, {impl->i32(index), impl->i32(field)}); }
+//value_t LLVMKit::emitstore(type_t typ, value_t value, value_t ptr, int offset) const { return impl->store(impl->i32(value), ptr); }
+
 std::string LLVMKit::dump(void) const { return impl->dump(); }
 
 /*
@@ -160,12 +164,7 @@ std::string LLVMKit::dump(void) const { return impl->dump(); }
  void *LLVMKit::emitalloca(const char *name) const {
  return impl->alloc(impl->i32_t, name);
  }
- void *LLVMKit::emitstore(const int value, const void *ptr) const {
- return impl->store(impl->i32(value), ptr);
- }
- void *LLVMKit::emitload(const void *ptr, const char *name) const {
- return impl->load(impl->i32_t, ptr, name);
- }
+
  void *LLVMKit::emitlet(const char *name, const int value) const {
  return impl->store(impl->i32(value), impl->alloc(impl->i32_t, name));
  }
