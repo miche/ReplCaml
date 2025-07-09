@@ -1,6 +1,8 @@
 import Foundation
 import CxxStdlib
 
+public typealias Env<T> = [String: T]
+
 public final class Id {
     actor Counter {
         private var counter = 0
@@ -36,13 +38,11 @@ public final class Id {
 }
 
 public final class Opt: Equatable, CustomStringConvertible {
-    typealias T = Typ
-
-    var v: T?
-    init(_ v: T? = nil) {
+    var v: Typ?
+    init(_ v: Typ? = nil) {
         self.v = v
     }
-    func update(_ v: T) {
+    func update(_ v: Typ) {
         self.v = v
     }
     public static func == (lhs: Opt, rhs: Opt) -> Bool {
@@ -52,15 +52,13 @@ public final class Opt: Equatable, CustomStringConvertible {
 }
 
 public indirect enum Typ: Equatable, CustomStringConvertible {
-    public typealias T = Typ
-
     case UNIT
     case BOOL
     case INT
     case FLOAT
     case VAR(Opt)
     case FUN([Self], Self)
-    static func gentyp() -> T { T.VAR(Opt(nil)) }
+    static func gentyp() -> Typ { Typ.VAR(Opt(nil)) }
     public var description: String {
         switch self {
         case .UNIT: return "()"
@@ -106,45 +104,26 @@ public class Ident: Equatable, CustomStringConvertible {
 }
 
 public indirect enum Syntax: Equatable, CustomStringConvertible {
-    public typealias T = Self
-
     case UNIT
     case BOOL(Bool)
     case INT(Int)
     case FLOAT(Double)
     case VAR(String)
 
-    case LET(name: Ident, value: T, in: T)
-    case LETREC(name: Ident, args: [Ident], body: T, in: T)
-    case APP(fn: T, args: [T])
-    case COND(pred: T, ifthen: T, ifelse: T)
+    case LET(name: Ident, value: Syntax, in: Syntax)
+    case LETREC(name: Ident, args: [Ident], body: Syntax, in: Syntax)
+    case APP(fn: Syntax, args: [Syntax])
+    case COND(pred: Syntax, ifthen: Syntax, ifelse: Syntax)
     case SEMICOLON
 
-    case ADD(lhs: T, rhs: T)
-    case SUB(lhs: T, rhs: T)
-    case MUL(lhs: T, rhs: T)
-    case DIV(lhs: T, rhs: T)
-    case CMP(pred: String, lhs: T, rhs: T)
-    //    case MOP(op: T, rhs: T) // regular monadic operator
-    //    case DOP(op: T, lhs: T, rhs: T) // regular dyadic operator
-    //    case MFN(fn: T, rhs: T) // regular monadic function
-    //    case DFN(fn: T, lhs: T, rhs: T) // regular dyadic function
+    case ADD(lhs: Syntax, rhs: Syntax)
+    case SUB(lhs: Syntax, rhs: Syntax)
+    case MUL(lhs: Syntax, rhs: Syntax)
+    case DIV(lhs: Syntax, rhs: Syntax)
+    case CMP(pred: String, lhs: Syntax, rhs: Syntax)
 
     case punct(String)
-    case composite([T])
-
-//    static func u() -> T { .UNIT }
-//    static func b(_ n: Bool) -> T { .BOOL(n) }
-//    static func i(_ n: Int) -> T { .INT(n) }
-//    static func v(_ s: String) -> T { .VAR(s) }
-//    static func d(_ n: String, _ v: T, in e: T) -> T  { .LET(name: Ident(n), value: v, in: e) }
-//    static func f(_ n: String, _ a: [String], _ b: T, in e: T) -> T  { .LETREC(name: Ident(n), args: a.map {Ident($0)}, body: b, in: e) }
-//    static func c(_ p: T, _ t: T, _ f: T) -> T { .COND(pred: p, ifthen: t, ifelse: f) }
-//
-//    static func p(_ p: String, _ l: T, _ r: T) -> T { .CMP(pred: p, lhs: l, rhs: r) }
-//    static func a(_ l: T, _ r: T) -> T { .ADD(lhs: l, rhs: r) }
-//    static func m(_ l: T, _ r: T) -> T { .MUL(lhs: l, rhs: r) }
-//    static func x(_ f: T, _ a: [T]) -> T { .APP(fn: f, args: a) }
+    case composite([Syntax])
 
     func eq(_ ch: String) -> Bool {
         if case .punct(let x) = self { return x == ch } else { return false }
@@ -185,10 +164,9 @@ public indirect enum Syntax: Equatable, CustomStringConvertible {
 }
 
 public class Parser {
-    public typealias T = Syntax
-    private static func thru(_ ast: [T]) -> [T] { return ast }
-    private static func word(_ str: String) -> T { return .punct(str) }
-    let lib: [String: PEGRule<T>] = [
+    private static func thru(_ ast: [Syntax]) -> [Syntax] { return ast }
+    private static func word(_ str: String) -> Syntax { return .punct(str) }
+    let lib: [String: PEGRule<Syntax>] = [
         "exprs": .sequence([.ref("expr"), .zeroMore([.terminal(/;/, {_ in .SEMICOLON}), .ref("expr")], thru)],
                            { $0.filter { $0 != .SEMICOLON } }),
         "expr": .choice([.ref("letrec"), .ref("letvar"), .ref("cond"), .ref("add")], thru),
@@ -222,7 +200,7 @@ public class Parser {
         "cmpexpr": .sequence([.ref("app"), .opt([.sequence([.terminal(/=|!=|<=|>=|<|>/, word), .ref("app")], thru)], thru)],
                              { xs in if xs.count == 1 { xs } else { [.CMP(pred: xs[1].asString!, lhs: xs[0], rhs: xs[2])] } }),
         "app": .sequence([.ref("atom"), .zeroMore([.ref("atom")], thru)], { xs in
-            if xs.count == 1 { xs } else { [.APP(fn: xs[0], args: [T](xs[1...]))] } }),
+            if xs.count == 1 { xs } else { [.APP(fn: xs[0], args: [Syntax](xs[1...]))] } }),
         "atom": .choice([.ref("float"), .ref("int"), .ref("unit"), .ref("paren"), .ref("bool"), .ref("ident")], thru),
         "paren": .sequence([.terminal(/\(/, word), .ref("expr"), .terminal(/\)/, word)], { [$0[1]] }),
         "unit": .terminal(/\(\)/, { _ in .UNIT }),
@@ -233,19 +211,16 @@ public class Parser {
         "ident": .sequence([.forbid([.terminal(/(?:in|let|rec|if|then|else|true|false)\b/, word)], thru), .ref("ident0")], thru),
         "ident0": .terminal(/[A-Za-z_][A-Za-z0-9_]*/, { .VAR($0) }),
     ]
-    var parser: PEGParser<T>
-    init() { parser = PEGParser<T>(lib) }
-    func parse(_ input: String, _ top: String) -> PEGResult<T> { return parser.parse(input, top) }
+    var parser: PEGParser<Syntax>
+    init() { parser = PEGParser<Syntax>(lib) }
+    func parse(_ input: String, _ top: String) -> PEGResult<Syntax> { return parser.parse(input, top) }
 }
 
 public struct Typing {
-    public typealias T = Syntax
-    public typealias E = [String: Typ]
-
-    public var env: E = [:]
-    public var s: T = .UNIT
-    init(_ ast: T) {
-        var env: E = [:]
+    public var env: Env<Typ> = [:]
+    public var s: Syntax = .UNIT
+    init(_ ast: Syntax) {
+        var env: Env<Typ> = [:]
         unify(.UNIT, infer(&env, ast))
         //extenv = extenv.mapValues(deref_typ)
         self.s = deref_term(ast)
@@ -260,7 +235,7 @@ public struct Typing {
         }
     }
     func deref_id_typ(_ xt: Ident) -> Ident { return Ident(xt.name, deref_typ(xt.typ)) }
-    func deref_term(_ t: T) -> T {
+    func deref_term(_ t: Syntax) -> Syntax {
         switch t {
         case .ADD(let l, let r): return .ADD(lhs: deref_term(l), rhs: deref_term(r))
         case .MUL(let l, let r): return .MUL(lhs: deref_term(l), rhs: deref_term(r))
@@ -289,7 +264,7 @@ public struct Typing {
         default: break
         }
     }
-    func infer(_ env: inout [String: Typ], _ s: T) -> Typ {
+    func infer(_ env: inout [String: Typ], _ s: Syntax) -> Typ {
         switch s {
         case .UNIT: return .UNIT
         case .BOOL: return .BOOL
@@ -357,22 +332,16 @@ public struct IdentL: Equatable, CustomStringConvertible {
 }
 
 public indirect enum KNormalT: Equatable, CustomStringConvertible {
-    public typealias T = KNormalT
-    public typealias I = Id.T
-    
     case UNIT
     case INT(Int)
     case FLOAT(Double)
-//    case MOP(String, I)
-//    case DOP(String, I, I)
-    case ADD(I, I)
-    case MUL(I, I)
-//    case COND(String, I, I, T, T)
-    case IFEQ(I, I, T, T)
-    case LET(IdentX, T, T)
-    case VAR(I)
-    case LETREC(IdentX, [IdentX], T, T)
-    case APP(I, [I])
+    case ADD(Id.T, Id.T)
+    case MUL(Id.T, Id.T)
+    case IFEQ(Id.T, Id.T, KNormalT, KNormalT)
+    case LET(IdentX, KNormalT, KNormalT)
+    case VAR(Id.T)
+    case LETREC(IdentX, [IdentX], KNormalT, KNormalT)
+    case APP(Id.T, [Id.T])
 
     public var to_i: Int? { if case .INT(let i) = self {return i} else {return nil}}
     public var description: String {
@@ -390,16 +359,6 @@ public indirect enum KNormalT: Equatable, CustomStringConvertible {
         }
     }
 
-//    public static func u() -> T { .UNIT }
-//    public static func i(_ n: Int) -> T { .INT(n) }
-//    public static func v(_ s: I) -> T { .VAR(s) }
-//    public static func d(_ n: I, _ v: T, in e: T) -> T  { .LET(IdentX(n, .INT), v, e) }
-//    public static func f(_ n: I, _ a: [I], _ b: T, in e: T) -> T  { .LETREC(IdentX(n, .INT), a.map {IdentX($0, .INT)}, b, e) }
-//
-//    public static func a(_ l: I, _ r: I) -> T { .ADD(l, r) }
-//    public static func m(_ l: I, _ r: I) -> T { .MUL(l, r) }
-//    public static func x(_ f: I, _ a: [I]) -> T { .APP(f, a) }
-
     public var fv: Set<String> {
         switch self {
         case .ADD(let l, let r), .MUL(let l, let r): return [l, r]
@@ -414,12 +373,9 @@ public indirect enum KNormalT: Equatable, CustomStringConvertible {
 }
 
 public struct KNormal {
-    public typealias T = KNormalT
-    public typealias E = [String: Typ]
-
-    public var env: E = [:]
-    public var k = T.UNIT
-    func insert_let(_ et: (e: T, t: Typ), _ k: (String)->(T, Typ)) -> (T, Typ) {
+    public var env: Env<Typ> = [:]
+    public var k = KNormalT.UNIT
+    func insert_let(_ et: (e: KNormalT, t: Typ), _ k: (String)->(KNormalT, Typ)) -> (KNormalT, Typ) {
         if case .VAR(let x) = et.e { return k(x) }
         else {
             let x = Id.gentmp(et.t)
@@ -427,21 +383,16 @@ public struct KNormal {
             return (.LET(IdentX(x, et.t), et.e, e), t)
         }
     }
-    func g(_ env: inout E, _ s: Syntax) -> (T, Typ) {
+    func g(_ env: inout Env<Typ>, _ s: Syntax) -> (KNormalT, Typ) {
         switch s {
         case .UNIT: return (.UNIT, .UNIT)
         case .BOOL(let b): return (.INT(b ? 1 : 0), .INT)
         case .INT(let i): return (.INT(i), .INT)
         case .FLOAT(let d): return (.FLOAT(d), .FLOAT)
-// .NOT
         case .ADD(lhs: let lhs, rhs: let rhs):
             return insert_let(g(&env, lhs)) { x in insert_let(g(&env, rhs)) { y in return (.ADD(x, y), .INT) } }
-//        case .SUB(lhs: let lhs, rhs: let rhs):
-//            insert_let(g(&env, lhs)) { x in insert_let(g(&env, rhs)) { y in return (.ADD(x, y), .INT) } }
         case .MUL(lhs: let lhs, rhs: let rhs):
             return insert_let(g(&env, lhs)) { x in insert_let(g(&env, rhs)) { y in return (.MUL(x, y), .INT) } }
-//        case .DIV(lhs: let lhs, rhs: let rhs):
-//            insert_let(g(&env, lhs)) { x in insert_let(g(&env, rhs)) { y in return (.ADD(x, y), .INT) } }
         case .VAR(let x): return (.VAR(x), env[x] ?? .INT) // forcing to int
         case .LET(name: let xt, value: let v, in: let e):
             let (e1, t1) = g(&env, v)
@@ -460,7 +411,7 @@ public struct KNormal {
             let g_e1 = g(&env, fn)
             if case .FUN(_, let t) = g_e1.1 {
                 return insert_let(g_e1) { f in
-                    func bind(_ xs: [String], _ rs: [Syntax]) -> (T, Typ) {
+                    func bind(_ xs: [String], _ rs: [Syntax]) -> (KNormalT, Typ) {
                         if rs.isEmpty { return (.APP(f, xs), t) }
                         return insert_let(g(&env, rs.first!)) { x in
                             return bind(xs + [x], [Syntax](rs.dropFirst()))
@@ -469,15 +420,11 @@ public struct KNormal {
                     return bind([], args)
                 }
             } else { return (.UNIT, .UNIT) }
-
-//        case .COND(pred: let pred, ifthen: let ifthen, ifelse: let ifelse):
-//        case .CMP(pred: let pred, lhs: let lhs, rhs: let rhs):
-
         default: return (.UNIT, .UNIT)
         }
     }
     init(_ e: Syntax) {
-        var env: E = [:]
+        var env: Env<Typ> = [:]
         let kt = g(&env, e)
         self.env = env
         self.k = kt.0
@@ -485,20 +432,17 @@ public struct KNormal {
 }
 
 public struct Alpha {
-    public typealias T = KNormalT
-    public typealias E = [String: String]
-
-    public var env: E = [:]
-    public var k = T.UNIT
-    init(_ k: T, _ env0: E = [:]) {
+    public var env: Env<String> = [:]
+    public var k = KNormalT.UNIT
+    init(_ k: KNormalT, _ env0: Env<String> = [:]) {
         var env = env0
         self.k = g(&env, k)
         self.env = env
     }
-    func find(_ x: String, _ env: E) -> String {
+    func find(_ x: String, _ env: Env<String>) -> String {
         return env[x] ?? x
     }
-    func g(_ env: inout E, _ k: T) -> T {
+    func g(_ env: inout Env<String>, _ k: KNormalT) -> KNormalT {
         switch k {
         case .ADD(let lhs, let rhs): return .ADD(find(lhs, env), find(rhs, env))
         case .MUL(let lhs, let rhs): return .MUL(find(lhs, env), find(rhs, env))
@@ -522,19 +466,16 @@ public struct Alpha {
 }
 
 public struct Beta {
-    public typealias T = KNormalT
-    public typealias E = [String: String]
-
-    public var env: E = [:]
-    public var k = T.UNIT
-    init(_ k: T) {
-        var env: E = [:]
+    public var env: Env<String> = [:]
+    public var k = KNormalT.UNIT
+    init(_ k: KNormalT) {
+        var env: Env<String> = [:]
         self.k = g(&env, k)
         self.env = env
     }
-    func find(_ x: String, _ env: E) -> String { env[x] ?? x }
+    func find(_ x: String, _ env: Env<String>) -> String { env[x] ?? x }
 
-    func g(_ env: inout E, _ k: T) -> T {
+    func g(_ env: inout Env<String>, _ k: KNormalT) -> KNormalT {
         switch k {
         case .ADD(let l, let r): return .ADD(find(l, env), find(r, env))
         case .MUL(let l, let r): return .MUL(find(l, env), find(r, env))
@@ -556,16 +497,15 @@ public struct Beta {
 }
 
 public struct Assoc {  // re-association actually
-    public typealias T = KNormalT
-    public var k = T.UNIT
+    public var k = KNormalT.UNIT
 
-    init(_ k: T) {
+    init(_ k: KNormalT) {
         self.k = f(k)
     }
-    func f(_ k: T) -> T {
+    func f(_ k: KNormalT) -> KNormalT {
         switch k {
         case .LET(let xt, let v, let e2):
-            func insert(_ e: T) -> T {
+            func insert(_ e: KNormalT) -> KNormalT {
                 switch e {
                 case .LET(let yt, let e3, let e4): return .LET(yt, e3, insert(e4))
                 case .LETREC(let yt, let a, let b, let e): return .LETREC(yt, a, b, insert(e))
@@ -580,27 +520,24 @@ public struct Assoc {  // re-association actually
 }
 
 public struct Inline {
-    public typealias T = KNormalT
-    public typealias E = [String: ([String], KNormalT)]  // args, body
-
-    public var env: E = [:]
-    public var k = T.UNIT
+    public var env: Env<([String], KNormalT)> = [:]
+    public var k = KNormalT.UNIT
     var threshold: Int
 
-    init(_ k: T, _ threshold: Int = 0) {
-        var env: E = [:]
+    init(_ k: KNormalT, _ threshold: Int = 0) {
+        var env: Env<([String], KNormalT)> = [:]
         self.threshold = threshold
         self.k = g(&env, k)
         self.env = env
     }
-    func size(of k:T) -> Int {
+    func size(of k:KNormalT) -> Int {
         switch k {
         case .LET(_, let v, let e): return 1 + size(of: e) + size(of: v)
         case .LETREC(_, _, let b, let e): return 1 + size(of: b) + size(of: e)
         default: return 1
         }
     }
-    func g(_ env: inout E, _ k: T) -> T {
+    func g(_ env: inout Env<([String], KNormalT)>, _ k: KNormalT) -> KNormalT {
         switch k {
         case .LET(let xt, let v, let e): return .LET(xt, g(&env, v), g(&env, e))
         case .LETREC(let xt, let a, let b, let e):
@@ -609,7 +546,7 @@ public struct Inline {
             return .LETREC(xt, a, g(&cl, b), g(&cl, e))
         case .APP(let f, let a):
             guard let (zs, e) = env[f] else { return k }
-            var cl: Alpha.E = [:]
+            var cl: Env<String> = [:]
             zip(zs, a).forEach { cl[$0] = $1 }
             let k = Alpha(e, cl)
             return k.k
@@ -619,20 +556,18 @@ public struct Inline {
 }
 
 struct ConstFold {
-    public typealias T = KNormalT
-    public typealias E = [String: T]
-    public var env: E = [:]
+    public var env: Env<KNormalT> = [:]
     public var k = KNormalT.UNIT
     init(_ k: KNormalT) {
-        var env: E = [:]
+        var env: Env<KNormalT> = [:]
         self.k = g(&env, k)
         self.env = env
     }
-    func findi(_ x: String, _ env: E) -> Int? {
+    func findi(_ x: String, _ env: Env<KNormalT>) -> Int? {
         guard let t = env[x] else { return nil }
         if case .INT(let i) = t { return i } else { return nil }
     }
-    func g(_ env: inout E, _ k: T) -> T {
+    func g(_ env: inout Env<KNormalT>, _ k: KNormalT) -> KNormalT {
         switch k {
         case .VAR(let x): if let i = findi(x, env) { return .INT(i) } else { return k }
         case .ADD(let lhs, let rhs): let l = findi(lhs, env), r = findi(rhs, env)
@@ -652,13 +587,11 @@ struct ConstFold {
 }
 
 public struct Elim {
-    public typealias T = KNormalT
-
-    public var k = T.UNIT
-    init(_ k: T) {
+    public var k = KNormalT.UNIT
+    init(_ k: KNormalT) {
         self.k = f(k)
     }
-    func hasSideEffect(_ k: T) -> Bool {
+    func hasSideEffect(_ k: KNormalT) -> Bool {
         switch k {
         case .LET(_, let v, let e): return hasSideEffect(v) || hasSideEffect(e)
         case .LETREC(_, _, _, let e): return hasSideEffect(e)
@@ -666,7 +599,7 @@ public struct Elim {
         default: return false
         }
     }
-    func f(_ k: T) -> T {
+    func f(_ k: KNormalT) -> KNormalT {
         switch k {
         case .LET(let xt, let v, let e):
             let e1 = f(v)
@@ -683,17 +616,11 @@ public struct Elim {
 }
 
 struct ClosureX {
-    public typealias T = Self
-
     var entry: Id.L
     var actual_fv: [Id.T]
 }
 
 public indirect enum ClosureT: CustomStringConvertible {
-    public typealias T = Self
-    public typealias I = Id.T   // variable
-    public typealias L = Id.L   // function
-
     struct Fundef: CustomStringConvertible {
         var name: IdentL
         var args: [IdentX]
@@ -713,17 +640,17 @@ public indirect enum ClosureT: CustomStringConvertible {
     case UNIT
     case INT(Int)
 
-    case ADD(I, I)
-    case MUL(I, I)
+    case ADD(Id.T, Id.T)
+    case MUL(Id.T, Id.T)
 
-    case LET(IdentX, T, T)
-    case VAR(I)
+    case LET(IdentX, ClosureT, ClosureT)
+    case VAR(Id.T)
 //    case LETREC(IdentX, [IdentX], T, T)
 //    case MakeCls(IdentX, ClosureX(Id.l, [Id.t]), T)
-    case MakeCls(IdentX, L, [I], T)
+    case MakeCls(IdentX, Id.L, [Id.T], ClosureT)
 //    case APP(I, [I])
-    case AppCls(I, [I]) // closure
-    case AppDir(L, [I]) // direct call(top level)
+    case AppCls(Id.T, [Id.T]) // closure
+    case AppDir(Id.L, [Id.T]) // direct call(top level)
 
     public var fv: Set<String> {
         switch self {
@@ -753,17 +680,13 @@ public indirect enum ClosureT: CustomStringConvertible {
 }
 
 struct Closure {
-    typealias T = ClosureT
-    typealias E = [String: Typ]
-    typealias K = ClosureT
-
-    public var toplevel: [T.Fundef] = []
-    public var env: E = [:]
-    public var e = T.UNIT
+    public var toplevel: [ClosureT.Fundef] = []
+    public var env: Env<Typ> = [:]
+    public var e = ClosureT.UNIT
 
     init(_ k: KNormalT) {
-        var toplevel: [T.Fundef] = []
-        var env: E = [:]
+        var toplevel: [ClosureT.Fundef] = []
+        var env: Env<Typ> = [:]
         var known: Set<String> = []
         self.e = g(&env, &known, &toplevel, k)
         self.env = env
@@ -773,7 +696,7 @@ struct Closure {
     // let rec quad x = let rec dbl x = x + x in dbl (dbl x) in quad 123
     // let rec make_adder x = let rec adder y = x + y in adder in (make_adder 3) 7
 
-    func g(_ env: inout E, _ known: inout Set<String>, _ toplevel: inout [T.Fundef], _ k: KNormalT) -> T {
+    func g(_ env: inout Env<Typ>, _ known: inout Set<String>, _ toplevel: inout [ClosureT.Fundef], _ k: KNormalT) -> ClosureT {
         switch k {
         case .UNIT: return .UNIT
         case .INT(let i): return .INT(i)
@@ -801,7 +724,7 @@ struct Closure {
             }
             let zz = e1.fv.subtracting(Set<String>([xt.name]).union(a.map(\.name)))
             let zts = zz.map { IdentX($0, cl[$0]!) }
-            let fn = T.Fundef(IdentL(xt), a, zts, e1)
+            let fn = ClosureT.Fundef(IdentL(xt), a, zts, e1)
             toplevel.append(fn)
             let e2 = g(&env, &known, &toplevel, e)
             if e2.fv.contains(xt.name) { return .MakeCls(xt, xt.name, Array(zz), e2) }
@@ -897,17 +820,14 @@ indirect enum Asm: CustomStringConvertible {
 }
 
 struct Virtual {
-    typealias T = Asm
-    typealias E = [String: Typ]
-
-    func concat(_ e1: T, _ xt: IdentX, _ e2: T) -> T {
+    func concat(_ e1: Asm, _ xt: IdentX, _ e2: Asm) -> Asm {
         switch e1 {
         case .ANS(let exp): return .LET(xt, exp, e2)
         case .LET(let yt, let exp, let e1_): return .LET(yt, exp, concat(e1_, xt, e2))
         }
     }
 
-    func g(_ env: inout E, _ e: ClosureT) -> T {
+    func g(_ env: inout Env<Typ>, _ e: ClosureT) -> Asm {
         switch e {
         case .UNIT: return .ANS(.NOP)
         case .INT(let i): return .ANS(.SET(i))
@@ -937,7 +857,7 @@ struct Virtual {
             return .ANS(.CALLDIR(x, ys.map { IdentX($0, env[$0]!) }))
         }
     }
-    func expand(_ xts: [IdentX], _ ini: (Int, T), _ addi: (Id.T, Typ, Int, Asm)->T) -> (Int, T) {
+    func expand(_ xts: [IdentX], _ ini: (Int, Asm), _ addi: (Id.T, Typ, Int, Asm)->Asm) -> (Int, Asm) {
         return xts.reduce(ini) { acc, xt in
             if case .UNIT = xt.typ { return acc }
             else { return (acc.0 + 4, addi(xt.name, xt.typ, acc.0, acc.1)) }
@@ -945,7 +865,7 @@ struct Virtual {
     }
 
     func h(_ f: ClosureT.Fundef) -> Asm.Fundef {
-        var env: E = [:]
+        var env: Env<Typ> = [:]
         f.formal_fv.forEach { env[$0.name] = $0.typ }
         f.args.forEach { env[$0.name] = $0.typ }
         env[f.name.name] = f.name.typ
@@ -959,17 +879,15 @@ struct Virtual {
     }
 
     var fundefs: [Asm.Fundef] = []
-    var e: T = .ANS(.NOP)
+    var e: Asm = .ANS(.NOP)
     init(_ fundefs: [ClosureT.Fundef], _ e: ClosureT) {
         self.fundefs = fundefs.map(h)
-        var env: E = [:]
+        var env: Env<Typ> = [:]
         self.e = g(&env, e)
     }
 }
 
 struct Emit {
-    typealias T = Asm
-
     private let llvm = LLVMKit("mincaml")
     public var ir: String = "emit"
 
@@ -1008,7 +926,7 @@ struct Emit {
         }
     }
 
-    init(_ fundefs: [Asm.Fundef], _ e: T) {
+    init(_ fundefs: [Asm.Fundef], _ e: Asm) {
         var env: [String: OpaquePointer?] = [:]
         fundefs.forEach { h(&env, $0) }
         let pg = g(&env, e)
