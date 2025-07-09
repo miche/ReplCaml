@@ -668,7 +668,6 @@ struct Closure {
         self.e = g(&env, &known, &toplevel, k)
         self.env = env
         self.toplevel = toplevel
-        // return Prog(List.rev !toplevel, e')
     }
 
     func g(_ env: inout Env<Typ>, _ known: inout Set<String>, _ toplevel: inout [ClosureT.Fundef], _ k: KNormalT) -> ClosureT {
@@ -717,12 +716,9 @@ indirect enum Asm: CustomStringConvertible {
     enum Exp: CustomStringConvertible {
         case NOP
         case SET(Int)
-//        case SETL(Id.T)
         case MOV(Id.T)
         case ADD(Id.T, Id.T)
-//        case ADDi(Id.T, Int)
         case LDi(Id.T, Int)
-//        case STi(Id.T, Ident, Int)
         case MUL(Id.T, Id.T)
         case CALLCLS(Id.T, [Ident])
         case CALLDIR(Id.T, [Ident])
@@ -732,12 +728,9 @@ indirect enum Asm: CustomStringConvertible {
             switch self {
             case .NOP: return "NOP;"
             case .SET(let i): return "SET \(i);"
-//            case .SETL(let i): return "SETL \(i);"
             case .MOV(let i): return "MOV \(i);"
             case .ADD(let i, let j): return "ADD \(i), \(j);"
-//            case .ADDi(let i, let j): return "ADDi \(i), \(j);"
             case .LDi(let i, let j): return "LDi \(i), \(j);"
-//            case .STi(let i, let j, let k): return "STi \(i), \(j), \(k);" // store
             case .MUL(let i, let j): return "MUL \(i), \(j);"
             case .CALLCLS(let i, let j): return "CALLCLS \(i) \(j.map(\.description).joined(separator: ", "));"
             case .CALLDIR(let i, let j): return "CALLDIR \(i) \(j.map(\.description).joined(separator: ", "));"
@@ -770,8 +763,6 @@ indirect enum Asm: CustomStringConvertible {
             return "(LET \(x) \(e) in \(a))"
         }
     }
-    static let reg_cl: String = "closure_ptr"
-    static let reg_hp: String = "heap_ptr"
 }
 
 struct Virtual {
@@ -798,15 +789,6 @@ struct Virtual {
             env[xt.name] = xt.typ
             let e2 = g(&env, b)
             return .LET(xt, .MAKECLOSURE(xt, fv.map {Ident($0, env[$0]!)}), e2)
-//            let (offset, store_fv) = fv.map {Ident($0, env[$0]!)}.reduce((4, e2)) { acc, xt in
-//                if case .UNIT = xt.typ { return acc }
-//                else { return (acc.0 + 4, .LET(Ident(Id.gentmp(.UNIT), .UNIT), .STi(xt.name, xt, acc.0), acc.1)) }
-//            }
-//            let z = Id.genid("l")
-//            return .LET(xt, .MOV(Asm.reg_hp),
-//                        .LET(Ident(Asm.reg_hp, .INT), .ADDi(Asm.reg_hp, offset),
-//                             .LET(Ident(z, .INT), .SETL(l),
-//                                  .LET(Ident(Id.gentmp(.UNIT), .UNIT), .STi(z, xt, 0), store_fv))))
         case .AppCls(let x, let ys):
             return .ANS(.CALLCLS(x, ys.map { Ident($0, env[$0]!) }))
         case .AppDir(let x, let ys):
@@ -819,9 +801,9 @@ struct Virtual {
         f.formal_fv.forEach { env[$0.name] = $0.typ }
         f.args.forEach { env[$0.name] = $0.typ }
         env[f.name.name] = f.name.typ
-        let (_, load) = f.formal_fv.reduce((4, g(&env, f.body))) { acc, xt in
+        let (_, load) = f.formal_fv.reduce((0, g(&env, f.body))) { acc, xt in
             if case .UNIT = xt.typ { return acc }
-            else { return (acc.0 + 4, .LET(xt, .LDi(Asm.reg_cl, acc.0), acc.1)) }
+            else { return (acc.0 + 1, .LET(xt, .LDi(f.name.name, acc.0), acc.1)) }
         }
         if case .FUN(_, let t2) = f.name.typ {
             return Asm.Fundef(f.name, f.args, load, t2)
@@ -854,11 +836,8 @@ struct Emit {
         if fd.args.count == 1 { //fd.args[0].typ
             let f = llvm.makecls(fd.name.name, fd.args[0].name, rett)
             env[fd.name.name] = f
-            //env["cl_ptr"] = llvm.arg(f, -1)
             env[fd.args[0].name] = llvm.arg(f, 0)
-            //llvm.makeclosure(f, llvm.arg(f, 0), t2t(fd.args[0].typ))
         }
-        // _ = llvm.ans(llvm.makeclosure(adder, x1))
         _ = g(&env, fd.body)
     }
     func g2(_ env: inout [String: OpaquePointer?], _ n: Ident?, _ e: Asm.Exp) -> OpaquePointer {
@@ -870,33 +849,8 @@ struct Emit {
         case .CALLCLS(let name, let arg): return llvm.callcls(env[name]!, env[arg[0].name]!!)
         case .CALLDIR(let name, let arg): return llvm.calldir(name, env[name]!, env[arg[0].name]!!)
         case .MAKECLOSURE(let name, let args): return llvm.makeclosure(env[name.name]!, env[args.first!.name]!, llvm.ptr)
-
-            /*
-             inline llvm::LoadInst *makeclosure(llvm::Function *fn, llvm::Value *w) {
-             llvm::LoadInst *ptr = load(ptr_t, closureptr);
-             store(fn, gep(cl_t, ptr, {i32(0), i32(0)}));
-             store(w, gep(cl_t, ptr, {i32(0), i32(1)}));
-             store(gep(cl_t, ptr, {i32(1)}), closureptr);
-             return ptr;
-             }
-             */
         case .MOV(let ptr): return env[ptr]!! // llvm.emitload(llvm.ptr, env[ptr]!)
-//        case .ADDi(let v, let i): return llvm.gep(env[v]!, Int32(i) % 8, Int32(i) / 8)
-//        case .SETL(let l): return llvm.setl(n?.name, env[l]!)
-//        case .STi(let value, let ptr, let offset): return llvm.emitstore(llvm.i32, env[value]!, env[ptr.name]!, Int32(offset))
-//            (make_adder.4:(Int)->(Int)->Int x.5:Int
-//             (LET adder.6:(Int)->Int MOV heap_ptr; in     **
-//              (LET heap_ptr:Int ADDi heap_ptr, 8; in  **
-//               (LET l.12:Int SETL adder.6; in
-//                (LET .u13:() STi l.12, adder.6:(Int)->Int, 0; in
-//                 (LET .u11:() STi x.5, x.5:Int, 4; in
-//                  ANS MOV adder.6;;))))))     **
-
-        case .LDi(let ptr, let index): return llvm.closure_arg(env["adder.6"]!, 0, n!.name)
-//            (adder.6:(Int)->Int y.7:Int
-//             (LET x.5:Int LDi closure_ptr, 4; in
-//              ANS ADD x.5, y.7;;))
-
+        case .LDi(let ptr, let index): return llvm.closure_arg(env[ptr]!, Int32(index), n!.name)  // FIXME: name should be applied
         }
     }
     func g(_ env: inout [String: OpaquePointer?], _ e: Asm) -> OpaquePointer {
