@@ -1,71 +1,59 @@
 import SwiftUI
 
 struct ContentView: View {
-    @State private var e = MinCaml()
-    @State private var messages: [Message] = []
     @State private var inputText: String = ""
+    @State private var messages: [Chat] = []
+    @State private var isProcessing = false
     @FocusState private var isFocused: Bool
-    @State private var msgNo: Int = 0
     static private let chatFont = Font.custom("SF Mono", size: 14)
 
-    struct Message: Hashable {
-        let no: Int
-        let text: String
-        let phase: String
-        let isUserMessage: Bool
+    enum Chat: Hashable, Error {
+        case request(text: String)
+        case response(tag: String, text: String)
     }
 
-    struct ChatView: View {
-        let text: String
-        let color: Color
+    struct Bubble: View {
+        var text: String
+        var width: CGFloat?
+        var align: Alignment
+        var color: Color
         var body: some View {
             Text(text)
                 .font(chatFont)
+                .textSelection(.enabled)
+                .padding(.horizontal, 12)
                 .padding(.vertical, 4)
-                .padding(.horizontal, 8)
                 .background(color.opacity(0.2))
                 .cornerRadius(8)
-        }
-    }
-    struct RequestView: View {
-        var text: String = ""
-        var body: some View {
-            HStack(alignment: .top, spacing: 8) {
-                Spacer()
-                ChatView(text: text, color: .blue)
-            }
-        }
-    }
-    struct ResultView: View {
-        var text: String = ""
-        var phase: String = ""
-        var body: some View {
-            HStack(alignment: .bottom, spacing: 6) {
-                ChatView(text: text, color: .green)
-                Text(phase).font(.footnote)
-                Spacer()
-            }
+                .frame(maxWidth: width, alignment: align)
         }
     }
 
     var body: some View {
         VStack {
-            ScrollViewReader { reader in
-                ScrollView {
-                    ForEach(messages, id: \.self) { message in
-                        if message.isUserMessage {
-                            RequestView(text: message.text)
-                        } else {
-                            ResultView(text: message.text, phase: message.phase)
+            ZStack {
+                ScrollViewReader { reader in
+                    ScrollView(showsIndicators: false) {
+                        VStack(alignment: .leading, spacing: 4) {
+                            ForEach(messages, id: \.self) { response in
+                                HStack(alignment: .bottom) {
+                                    switch response {
+                                    case .request(text: let text):
+                                        Bubble(text: text, width: .infinity, align: .trailing, color: .accentColor)
+                                    case .response(tag: let tag, text: let text):
+                                        Bubble(text: text, align: .leading, color: .gray)
+                                        Text(tag).font(.footnote)
+                                    }
+                                }
+                            }
+                        }
+                    }.onChange(of: messages) {
+                        if let lastResponse = messages.last {
+                            reader.scrollTo(lastResponse, anchor: .bottom)
                         }
                     }
                 }
-                .padding()
-                .onChange(of: messages) {
-                    if let lastMessage = messages.last {
-                        reader.scrollTo(lastMessage, anchor: .bottom)
-                    }
-                }
+                if isProcessing { ProgressView().background(.clear) }
             }
             TextField("let rec ... ", text: $inputText, axis: .vertical)
                 .font(ContentView.chatFont)
@@ -73,26 +61,33 @@ struct ContentView: View {
                 .autocorrectionDisabled()
                 .focusEffectDisabled()
                 .focused($isFocused)
-                .onSubmit(sendMessage)
-                .padding()
+                .onSubmit { Task { await performAsyncTask() } }
         }
+        .padding()
         .onAppear { isFocused = true }
     }
 
-    func sendMessage() {
-        if !inputText.isEmpty {
-            messages.append(Message(no: msgNo, text: inputText, phase: "", isUserMessage: true))
-            msgNo += 1
-            if let response = e.handle(inputText) {
-                response.forEach { res in
-                    messages.append(Message(no: msgNo, text: res.0, phase: res.1, isUserMessage: false))
-                    msgNo += 1
-                }
-            }
+    @MainActor
+    func performAsyncTask() async {
+        guard !isProcessing else { return }
+        isProcessing = true
+        defer { isProcessing = false }
+        do {
+            messages.append(.request(text: inputText))
+            let result = try compile(inputText)
+            messages.append(contentsOf: result)
+        } catch {
+            messages.append(error as! ContentView.Chat)
         }
     }
+
+    func compile(_ code: String) throws -> [Chat] {
+        if let response = MinCaml.shared.handle(code) {
+            return response.map { res in .response(tag: res.1, text: res.0) }
+        } else { throw Chat.response(tag: "compile failed", text: code) }
+    }
 }
+
 #Preview {
     ContentView()
 }
-

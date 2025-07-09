@@ -13,7 +13,7 @@ public final class Id {
     public typealias T = String
     public typealias L = String
     nonisolated(unsafe) private static var counter = 0 // TODO: remove
-    private static let counterA = Counter()
+//    private static let counter = Counter()
 
     init() {}
     static func genid(_ s: String) -> T {
@@ -25,14 +25,14 @@ public final class Id {
         return ".\(t.rep)\(Id.counter)"
     }
     // TODO: replace above with those
-    static func genidA(_ s: String) async -> T {
-        let count = await Id.counterA.next()
-        return "\(s).\(count)"
-    }
-    static func gentmpA(_ t: Typ) async -> T {
-        let count = await Id.counterA.next()
-        return ".\(t.rep)\(count)"
-    }
+//    static func genid(_ s: String) async -> T {
+//        let count = await Id.counter.next()
+//        return "\(s).\(count)"
+//    }
+//    static func gentmp(_ t: Typ) async -> T {
+//        let count = await Id.counter.next()
+//        return ".\(t.rep)\(count)"
+//    }
 }
 
 public final class Opt: Equatable, CustomStringConvertible {
@@ -133,18 +133,18 @@ public indirect enum Syntax: Equatable, CustomStringConvertible {
     case punct(String)
     case composite([T])
 
-    static func u() -> T { .UNIT }
-    static func b(_ n: Bool) -> T { .BOOL(n) }
-    static func i(_ n: Int) -> T { .INT(n) }
-    static func v(_ s: String) -> T { .VAR(s) }
-    static func d(_ n: String, _ v: T, in e: T) -> T  { .LET(name: Ident(n), value: v, in: e) }
-    static func f(_ n: String, _ a: [String], _ b: T, in e: T) -> T  { .LETREC(name: Ident(n), args: a.map {Ident($0)}, body: b, in: e) }
-    static func c(_ p: T, _ t: T, _ f: T) -> T { .COND(pred: p, ifthen: t, ifelse: f) }
-
-    static func p(_ p: String, _ l: T, _ r: T) -> T { .CMP(pred: p, lhs: l, rhs: r) }
-    static func a(_ l: T, _ r: T) -> T { .ADD(lhs: l, rhs: r) }
-    static func m(_ l: T, _ r: T) -> T { .MUL(lhs: l, rhs: r) }
-    static func x(_ f: T, _ a: [T]) -> T { .APP(fn: f, args: a) }
+//    static func u() -> T { .UNIT }
+//    static func b(_ n: Bool) -> T { .BOOL(n) }
+//    static func i(_ n: Int) -> T { .INT(n) }
+//    static func v(_ s: String) -> T { .VAR(s) }
+//    static func d(_ n: String, _ v: T, in e: T) -> T  { .LET(name: Ident(n), value: v, in: e) }
+//    static func f(_ n: String, _ a: [String], _ b: T, in e: T) -> T  { .LETREC(name: Ident(n), args: a.map {Ident($0)}, body: b, in: e) }
+//    static func c(_ p: T, _ t: T, _ f: T) -> T { .COND(pred: p, ifthen: t, ifelse: f) }
+//
+//    static func p(_ p: String, _ l: T, _ r: T) -> T { .CMP(pred: p, lhs: l, rhs: r) }
+//    static func a(_ l: T, _ r: T) -> T { .ADD(lhs: l, rhs: r) }
+//    static func m(_ l: T, _ r: T) -> T { .MUL(lhs: l, rhs: r) }
+//    static func x(_ f: T, _ a: [T]) -> T { .APP(fn: f, args: a) }
 
     func eq(_ ch: String) -> Bool {
         if case .punct(let x) = self { return x == ch } else { return false }
@@ -390,15 +390,15 @@ public indirect enum KNormalT: Equatable, CustomStringConvertible {
         }
     }
 
-    public static func u() -> T { .UNIT }
-    public static func i(_ n: Int) -> T { .INT(n) }
-    public static func v(_ s: I) -> T { .VAR(s) }
-    public static func d(_ n: I, _ v: T, in e: T) -> T  { .LET(IdentX(n, .INT), v, e) }
-    public static func f(_ n: I, _ a: [I], _ b: T, in e: T) -> T  { .LETREC(IdentX(n, .INT), a.map {IdentX($0, .INT)}, b, e) }
-
-    public static func a(_ l: I, _ r: I) -> T { .ADD(l, r) }
-    public static func m(_ l: I, _ r: I) -> T { .MUL(l, r) }
-    public static func x(_ f: I, _ a: [I]) -> T { .APP(f, a) }
+//    public static func u() -> T { .UNIT }
+//    public static func i(_ n: Int) -> T { .INT(n) }
+//    public static func v(_ s: I) -> T { .VAR(s) }
+//    public static func d(_ n: I, _ v: T, in e: T) -> T  { .LET(IdentX(n, .INT), v, e) }
+//    public static func f(_ n: I, _ a: [I], _ b: T, in e: T) -> T  { .LETREC(IdentX(n, .INT), a.map {IdentX($0, .INT)}, b, e) }
+//
+//    public static func a(_ l: I, _ r: I) -> T { .ADD(l, r) }
+//    public static func m(_ l: I, _ r: I) -> T { .MUL(l, r) }
+//    public static func x(_ f: I, _ a: [I]) -> T { .APP(f, a) }
 
     public var fv: Set<String> {
         switch self {
@@ -821,7 +821,7 @@ indirect enum Asm: CustomStringConvertible {
         case SET(Int)
         case SETL(Id.L)
         case MOV(Id.T)
-        case FMOVD(Id.T)
+//        case FMOVD(Id.T)
         case ADD(Id.T, Id.T)
         case ADDi(Id.T, Int)
 //        case SLL(Id.T, Id.T)
@@ -832,9 +832,9 @@ indirect enum Asm: CustomStringConvertible {
         case STi(Id.T, IdentX, Int)
         case MUL(Id.T, Id.T)
 //        case LDDF(Id.T, Id.T)
-        case LDDFi(Id.T, Int)
+//        case LDDFi(Id.T, Int)
 //        case STDF(Id.T, Id.T, Id.T)
-        case STDFi(Id.T, Id.T, Int)
+//        case STDFi(Id.T, Id.T, Int)
         case CALLCLS(Id.T, [IdentX])
         case CALLDIR(Id.T, [IdentX])
 //        case SAVE(Id.T, Id.T)
@@ -846,7 +846,7 @@ indirect enum Asm: CustomStringConvertible {
             case .SET(let i): return "SET \(i);" // TODO: -> store
             case .SETL(let i): return "SETL \(i);" // TODO: -> store
             case .MOV(let i): return "MOV \(i);" // TODO: -> alloca;store
-            case .FMOVD(let i): return "FMOVD \(i);"
+//            case .FMOVD(let i): return "FMOVD \(i);"
             case .ADD(let i, let j): return "ADD \(i), \(j);"
             case .ADDi(let i, let j): return "ADDi \(i), \(j);"
 //            case .SLL(let i, let j): return "SLL \(i), \(j);"   // Shift Left Logical
@@ -857,9 +857,9 @@ indirect enum Asm: CustomStringConvertible {
             case .STi(let i, let j, let k): return "STi \(i), \(j), \(k);" // store
             case .MUL(let i, let j): return "MUL \(i), \(j);"
 //            case .LDDF(let i, let j): return "LDDF \(i), \(j);"
-            case .LDDFi(let i, let j): return "LDDFi \(i), \(j);"
+//            case .LDDFi(let i, let j): return "LDDFi \(i), \(j);"
 //            case .STDF(let i, let j, let k): return "STDF \(i), \(j), \(k);"    // Store Double Floating-Point register
-            case .STDFi(let i, let j, let k): return "STDFi \(i), \(j), \(k);"
+//            case .STDFi(let i, let j, let k): return "STDFi \(i), \(j), \(k);"
             case .CALLCLS(let i, let j): return "CALLCLS \(i) \(j.map(\.description).joined(separator: ", "));"
             case .CALLDIR(let i, let j): return "CALLDIR \(i) \(j.map(\.description).joined(separator: ", "));"
 //            case .SAVE(let i, let j): return "SAVE \(i), \(j);"
@@ -918,12 +918,7 @@ struct Virtual {
             env[xt.name] = xt.typ
             let e2 = g(&env, b)
             return concat(e1, xt, e2)
-        case .VAR(let x):
-            switch env[x]! {
-            case .UNIT: return .ANS(.NOP)
-            case .FLOAT: return .ANS(.FMOVD(x))
-            default: return .ANS(.MOV(x))
-            }
+        case .VAR(let x): return .ANS(.MOV(x))
         case .MakeCls(let xt, let l, let fv, let b):
             env[xt.name] = xt.typ
             let e2 = g(&env, b)
@@ -979,15 +974,15 @@ struct Emit {
     public var ir: String = "emit"
 
     func h(_ env: inout [String: OpaquePointer?], _ fd: Asm.Fundef) {
-        guard case .FUN(let at, let rt) = fd.ret else { fatalError() }
+//        guard case .FUN(let at, let rt) = fd.ret else { fatalError() }
         var rett = llvm.i32
-        switch rt {
+        switch fd.ret {
         case .FUN: rett = llvm.ptr; break
         case .UNIT: rett = llvm.unit; break
         case .FLOAT: rett = llvm.dbl; break
         default: rett = llvm.i32; break
         }
-        if fd.args.count == 1 {
+        if fd.args.count == 1 { //fd.args[0].typ
             let f = llvm.makecls(fd.name, fd.args[0].name, rett)
             env[fd.name] = f
             env[fd.args[0].name] = llvm.arg(f, 0) //t2v(at[0])
@@ -1024,7 +1019,9 @@ struct Emit {
     }
 }
 
-struct MinCaml {
+final class MinCaml {
+    @MainActor static let shared: MinCaml = MinCaml()
+
     let ps = Parser()
     init() { }
 
@@ -1060,8 +1057,8 @@ struct MinCaml {
             let x10 = Virtual(x9.toplevel, x9.e) // do nothing
             x10.fundefs.forEach { out.append(($0.description, "-")) }
             out.append((x10.e.description, "Virtual"))
-//            let x11 = Emit(x10.fundefs, x10.e)
-//            out.append((x11.ir, "Emit"))
+            //let x11 = Emit(x10.fundefs, x10.e)
+            //out.append((x11.ir, "Emit"))
         }
         return out
     }
