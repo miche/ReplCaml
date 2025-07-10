@@ -74,15 +74,15 @@ struct ContentView: View {
         defer { isProcessing = false }
         do {
             messages.append(.request(text: inputText))
-            let result = try compile(inputText)
+            let result = try await compile(inputText)
             messages.append(contentsOf: result)
         } catch {
             messages.append(error as! ContentView.Chat)
         }
     }
 
-    func compile(_ code: String) throws -> [Chat] {
-        if let response = MinCaml.shared.handle(code) {
+    func compile(_ code: String) async throws -> [Chat] {
+        if let response = await MinCaml.f(code) {
             return response.reduce([]) { acc, tt in
                 if acc.isEmpty { return [.response(tag: tt.1, text: tt.0)] }
                 else {

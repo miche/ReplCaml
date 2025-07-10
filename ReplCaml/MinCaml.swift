@@ -1,23 +1,11 @@
 import Foundation
 import CxxStdlib
 
-public typealias Env<T> = [String: T]
+typealias Env<T> = [String: T]
 
-public final class Id {
-//    actor Counter {
-//        private var counter = 0
-//
-//        func next() -> Int {
-//            counter += 1
-//            return counter
-//        }
-//    }
-    public typealias T = String
-
-    nonisolated(unsafe) private static var counter = 0 // TODO: remove
-//    private static let counter = Counter()
-
-    init() {}
+struct Id {
+    typealias T = String
+    nonisolated(unsafe) private static var counter = 0
     static func genid(_ s: String) -> T {
         counter += 1
         return "\(s).\(Id.counter)"
@@ -26,18 +14,9 @@ public final class Id {
         counter += 1
         return ".\(t.rep)\(Id.counter)"
     }
-    // TODO: replace above with those
-//    static func genid(_ s: String) async -> T {
-//        let count = await Id.counter.next()
-//        return "\(s).\(count)"
-//    }
-//    static func gentmp(_ t: Typ) async -> T {
-//        let count = await Id.counter.next()
-//        return ".\(t.rep)\(count)"
-//    }
 }
 
-public final class Opt: Equatable, CustomStringConvertible {
+final class Opt: Equatable, CustomStringConvertible {
     var v: Typ?
     init(_ v: Typ? = nil) {
         self.v = v
@@ -45,13 +24,13 @@ public final class Opt: Equatable, CustomStringConvertible {
     func update(_ v: Typ) {
         self.v = v
     }
-    public static func == (lhs: Opt, rhs: Opt) -> Bool {
+    static func == (lhs: Opt, rhs: Opt) -> Bool {
         return lhs.v == rhs.v
     }
-    public var description: String { return v?.description ?? "#undef" }
+    var description: String { return v?.description ?? "#undef" }
 }
 
-public indirect enum Typ: Equatable, CustomStringConvertible {
+indirect enum Typ: Equatable, CustomStringConvertible {
     case UNIT
     case BOOL
     case INT
@@ -59,7 +38,7 @@ public indirect enum Typ: Equatable, CustomStringConvertible {
     case VAR(Opt)
     case FUN([Self], Self)
     static func gentyp() -> Typ { Typ.VAR(Opt(nil)) }
-    public var description: String {
+    var description: String {
         switch self {
         case .UNIT: return "()"
         case .BOOL: return "Bool"
@@ -81,7 +60,7 @@ public indirect enum Typ: Equatable, CustomStringConvertible {
     }
 }
 
-public class Ident0: Equatable, CustomStringConvertible {
+final class Ident0: Equatable, CustomStringConvertible {
     var name: String
     var typ: Typ
     init(_ name: String) {
@@ -92,18 +71,18 @@ public class Ident0: Equatable, CustomStringConvertible {
         self.name = name
         self.typ = typ
     }
-    public func update(_ t: Typ) {
+    func update(_ t: Typ) {
         if case .VAR(let v) = self.typ {
             v.update(t)
         }
     }
-    public static func == (lhs: Ident0, rhs: Ident0) -> Bool {
+    static func == (lhs: Ident0, rhs: Ident0) -> Bool {
         lhs.name == rhs.name
     }
-    public var description: String { "\(name):\(typ)" }
+    var description: String { "\(name):\(typ)" }
 }
 
-public struct Ident: Equatable, CustomStringConvertible {
+struct Ident: Equatable, CustomStringConvertible {
     var name: Id.T
     var typ: Typ
     init(_ name: Id.T, _ typ: Typ) {
@@ -114,10 +93,10 @@ public struct Ident: Equatable, CustomStringConvertible {
         self.name = xt.name
         self.typ = xt.typ
     }
-    public var description: String { "\(name):\(typ)" }
+    var description: String { "\(name):\(typ)" }
 }
 
-public indirect enum Syntax: Equatable, CustomStringConvertible {
+indirect enum Syntax: Equatable, CustomStringConvertible {
     case UNIT
     case BOOL(Bool)
     case INT(Int)
@@ -153,7 +132,7 @@ public indirect enum Syntax: Equatable, CustomStringConvertible {
     var asArray: [Syntax]? {
         if case .composite(let xs) = self { return xs } else { return nil }
     }
-    public var description: String {
+    var description: String {
         switch self {
         case .UNIT: return "()"
         case .BOOL(let x): return x ? "#t" : "#f"
@@ -177,9 +156,9 @@ public indirect enum Syntax: Equatable, CustomStringConvertible {
     }
 }
 
-public class Parser {
-    private static func thru(_ ast: [Syntax]) -> [Syntax] { return ast }
-    private static func word(_ str: String) -> Syntax { return .punct(str) }
+struct Parser {
+    static func thru(_ ast: [Syntax]) -> [Syntax] { return ast }
+    static func word(_ str: String) -> Syntax { return .punct(str) }
     let lib: [String: PEGRule<Syntax>] = [
         "exprs": .sequence([.ref("expr"), .zeroMore([.terminal(/;/, {_ in .SEMICOLON}), .ref("expr")], thru)],
                            { $0.filter { $0 != .SEMICOLON } }),
@@ -230,16 +209,15 @@ public class Parser {
     func parse(_ input: String, _ top: String) -> PEGResult<Syntax> { return parser.parse(input, top) }
 }
 
-public struct Typing {
-    public var env: Env<Typ> = [:]
-    public var s: Syntax = .UNIT
+struct Typing {
+    var s: Syntax = .UNIT
     init(_ ast: Syntax) {
         var env: Env<Typ> = [:]
         unify(.UNIT, infer(&env, ast))
         //extenv = extenv.mapValues(deref_typ)
         self.s = deref_term(ast)
-        self.env = env
     }
+    static func f(_ ast: Syntax) -> Syntax { Typing(ast).s }
     func deref_typ(_ t: Typ) -> Typ {
         switch t {
         case .FUN(let a, let e): return .FUN(a.map(deref_typ), deref_typ(e))
@@ -316,7 +294,7 @@ public struct Typing {
     }
 }
 
-public indirect enum KNormalT: Equatable, CustomStringConvertible {
+indirect enum KNormalT: Equatable, CustomStringConvertible {
     case UNIT
     case INT(Int)
     case FLOAT(Double)
@@ -328,8 +306,8 @@ public indirect enum KNormalT: Equatable, CustomStringConvertible {
     case LETREC(Ident, [Ident], KNormalT, KNormalT)
     case APP(Id.T, [Id.T])
 
-    public var to_i: Int? { if case .INT(let i) = self {return i} else {return nil}}
-    public var description: String {
+    var to_i: Int? { if case .INT(let i) = self {return i} else {return nil}}
+    var description: String {
         switch self {
         case .UNIT: return "()"
         case .INT(let x): return "\(x)"
@@ -344,7 +322,7 @@ public indirect enum KNormalT: Equatable, CustomStringConvertible {
         }
     }
 
-    public var fv: Set<String> {
+    var fv: Set<String> {
         switch self {
         case .ADD(let l, let r), .MUL(let l, let r): return [l, r]
         case .VAR(let x): return [x]
@@ -357,9 +335,8 @@ public indirect enum KNormalT: Equatable, CustomStringConvertible {
     }
 }
 
-public struct KNormal {
-    public var env: Env<Typ> = [:]
-    public var k = KNormalT.UNIT
+struct KNormal {
+    var k = KNormalT.UNIT
     func insert_let(_ et: (e: KNormalT, t: Typ), _ k: (String)->(KNormalT, Typ)) -> (KNormalT, Typ) {
         if case .VAR(let x) = et.e { return k(x) }
         else {
@@ -380,7 +357,7 @@ public struct KNormal {
             return insert_let(g(&env, lhs)) { x in insert_let(g(&env, rhs)) { y in return (.MUL(x, y), .INT) } }
         case .VAR(let x): return (.VAR(x), env[x] ?? .INT) // forcing to int
         case .LET(name: let xt, value: let v, in: let e):
-            let (e1, t1) = g(&env, v)
+            let (e1, _) = g(&env, v)
             env[xt.name] = xt.typ
             let (e2, t2) = g(&env, e)   // BUG: need sub env, may be or not, seems ok by spec because of 'in'?
             return (.LET(Ident(xt), e1, e2), t2)
@@ -390,7 +367,7 @@ public struct KNormal {
             env[xt.name] = xt.typ
             let (e2, t2) = g(&cl, e)
             let ax = a.map { cl[$0.name] = $0.typ; return Ident($0) }
-            let (e1, t1) = g(&cl, b)
+            let (e1, _) = g(&cl, b)
             return (.LETREC(Ident(xt), ax, e1, e2), t2)
         case .APP(fn: let fn, args: let args):
             let g_e1 = g(&env, fn)
@@ -411,19 +388,18 @@ public struct KNormal {
     init(_ e: Syntax) {
         var env: Env<Typ> = [:]
         let kt = g(&env, e)
-        self.env = env
         self.k = kt.0
     }
+    static func f(_ ast: Syntax) -> KNormalT { KNormal(ast).k }
 }
 
-public struct Alpha {
-    public var env: Env<String> = [:]
-    public var k = KNormalT.UNIT
+struct Alpha {
+    var k = KNormalT.UNIT
     init(_ k: KNormalT, _ env0: Env<String> = [:]) {
         var env = env0
         self.k = g(&env, k)
-        self.env = env
     }
+    static func f(_ k: KNormalT) -> KNormalT { Alpha(k).k }
     func find(_ x: String, _ env: Env<String>) -> String {
         return env[x] ?? x
     }
@@ -450,14 +426,13 @@ public struct Alpha {
     }
 }
 
-public struct Beta {
-    public var env: Env<String> = [:]
-    public var k = KNormalT.UNIT
+struct Beta {
+    var k = KNormalT.UNIT
     init(_ k: KNormalT) {
         var env: Env<String> = [:]
         self.k = g(&env, k)
-        self.env = env
     }
+    static func f(_ k: KNormalT) -> KNormalT { Beta(k).k }
     func find(_ x: String, _ env: Env<String>) -> String { env[x] ?? x }
 
     func g(_ env: inout Env<String>, _ k: KNormalT) -> KNormalT {
@@ -481,12 +456,13 @@ public struct Beta {
     }
 }
 
-public struct Assoc {  // re-association actually
-    public var k = KNormalT.UNIT
+struct Assoc {  // re-association actually
+    var k = KNormalT.UNIT
 
     init(_ k: KNormalT) {
         self.k = f(k)
     }
+    static func f(_ k: KNormalT) -> KNormalT { Assoc(k).k }
     func f(_ k: KNormalT) -> KNormalT {
         switch k {
         case .LET(let xt, let v, let e2):
@@ -504,17 +480,16 @@ public struct Assoc {  // re-association actually
     }
 }
 
-public struct Inline {
-    public var env: Env<([String], KNormalT)> = [:]
-    public var k = KNormalT.UNIT
+struct Inline {
+    var k = KNormalT.UNIT
     var threshold: Int
 
     init(_ k: KNormalT, _ threshold: Int = 0) {
         var env: Env<([String], KNormalT)> = [:]
         self.threshold = threshold
         self.k = g(&env, k)
-        self.env = env
     }
+    static func f(_ k: KNormalT) -> KNormalT { Inline(k).k }
     func size(of k:KNormalT) -> Int {
         switch k {
         case .LET(_, let v, let e): return 1 + size(of: e) + size(of: v)
@@ -541,13 +516,12 @@ public struct Inline {
 }
 
 struct ConstFold {
-    public var env: Env<KNormalT> = [:]
-    public var k = KNormalT.UNIT
+    var k = KNormalT.UNIT
     init(_ k: KNormalT) {
         var env: Env<KNormalT> = [:]
         self.k = g(&env, k)
-        self.env = env
     }
+    static func f(_ k: KNormalT) -> KNormalT { ConstFold(k).k }
     func findi(_ x: String, _ env: Env<KNormalT>) -> Int? {
         guard let t = env[x] else { return nil }
         if case .INT(let i) = t { return i } else { return nil }
@@ -571,11 +545,12 @@ struct ConstFold {
     }
 }
 
-public struct Elim {
-    public var k = KNormalT.UNIT
+struct Elim {
+    var k = KNormalT.UNIT
     init(_ k: KNormalT) {
         self.k = f(k)
     }
+    static func f(_ k: KNormalT) -> KNormalT { Elim(k).k }
     func hasSideEffect(_ k: KNormalT) -> Bool {
         switch k {
         case .LET(_, let v, let e): return hasSideEffect(v) || hasSideEffect(e)
@@ -600,7 +575,7 @@ public struct Elim {
     }
 }
 
-public indirect enum ClosureT: CustomStringConvertible {
+indirect enum ClosureT: CustomStringConvertible {
     struct Fundef: CustomStringConvertible {
         var name: Ident
         var args: [Ident]
@@ -629,19 +604,19 @@ public indirect enum ClosureT: CustomStringConvertible {
     case AppCls(Id.T, [Id.T]) // closure
     case AppDir(Id.T, [Id.T]) // direct call(top level)
 
-    public var fv: Set<String> {
+    var fv: Set<String> {
         switch self {
         case .ADD(let l, let r), .MUL(let l, let r): return [l, r]
         case .VAR(let x): return [x]
         case .LET(let xt, let v, let e): return v.fv.union(e.fv.subtracting([xt.name]))
-        case .MakeCls(let xt, let l, let v, let e):
+        case .MakeCls(let xt, _, let v, let e):
             return Set<String>(v).union(e.fv).subtracting([xt.name])
         case .AppCls(let f, let a): return Set<String>(a).union([f])
         case .AppDir(_, let a): return Set<String>(a)
         default: return []
         }
     }
-    public var description: String {
+    var description: String {
         switch self {
         case .UNIT: return "()"
         case .INT(let x): return "\(x)"
@@ -657,19 +632,17 @@ public indirect enum ClosureT: CustomStringConvertible {
 }
 
 struct Closure {
-    public var toplevel: [ClosureT.Fundef] = []
-    public var env: Env<Typ> = [:]
-    public var e = ClosureT.UNIT
+    var toplevel: [ClosureT.Fundef] = []
+    var e = ClosureT.UNIT
 
     init(_ k: KNormalT) {
         var toplevel: [ClosureT.Fundef] = []
         var env: Env<Typ> = [:]
         var known: Set<String> = []
         self.e = g(&env, &known, &toplevel, k)
-        self.env = env
         self.toplevel = toplevel
     }
-
+    static func f(_ k: KNormalT) -> ([ClosureT.Fundef], ClosureT) { let c = Closure(k); return (c.toplevel, c.e) }
     func g(_ env: inout Env<Typ>, _ known: inout Set<String>, _ toplevel: inout [ClosureT.Fundef], _ k: KNormalT) -> ClosureT {
         switch k {
         case .UNIT: return .UNIT
@@ -785,7 +758,7 @@ struct Virtual {
             let e2 = g(&env, b)
             return concat(e1, xt, e2)
         case .VAR(let x): return .ANS(.MOV(x))
-        case .MakeCls(let xt, let l, let fv, let b):
+        case .MakeCls(let xt, _, let fv, let b):
             env[xt.name] = xt.typ
             let e2 = g(&env, b)
             return .LET(xt, .MAKECLOSURE(xt, fv.map {Ident($0, env[$0]!)}), e2)
@@ -817,11 +790,12 @@ struct Virtual {
         var env: Env<Typ> = [:]
         self.e = g(&env, e)
     }
+    static func f(_ fundefs: [ClosureT.Fundef], _ e: ClosureT) -> ([Asm.Fundef], Asm) { let c = Virtual(fundefs, e); return (c.fundefs, c.e) }
 }
 
 struct Emit {
     private let llvm = LLVMKit("mincaml")
-    public var ir: String = "emit"
+    var ir: String = "emit"
 
     func t2t(_ typ: Typ) -> OpaquePointer {
         switch typ {
@@ -832,7 +806,7 @@ struct Emit {
         }
     }
     func h(_ env: inout [String: OpaquePointer?], _ fd: Asm.Fundef) {
-        var rett = t2t(fd.ret)
+        let rett = t2t(fd.ret)
         if fd.args.count == 1 { //fd.args[0].typ
             let f = llvm.makecls(fd.name.name, fd.args[0].name, rett)
             env[fd.name.name] = f
@@ -850,7 +824,7 @@ struct Emit {
         case .CALLDIR(let name, let arg): return llvm.calldir(name, env[name]!, env[arg[0].name]!!)
         case .MAKECLOSURE(let name, let args): return llvm.makeclosure(env[name.name]!, env[args.first!.name]!, llvm.ptr)
         case .MOV(let ptr): return env[ptr]!! // llvm.emitload(llvm.ptr, env[ptr]!)
-        case .LDi(let ptr, let index): return llvm.closure_arg(env[ptr]!, Int32(index), n!.name)  // FIXME: name should be applied
+        case .LDi(let ptr, let index): return llvm.closure_arg(env[ptr]!, Int32(index), n!.name)
         }
     }
     func g(_ env: inout [String: OpaquePointer?], _ e: Asm) -> OpaquePointer {
@@ -866,55 +840,39 @@ struct Emit {
         var env: [String: OpaquePointer?] = [:]
         fundefs.forEach { h(&env, $0) }
         let caml_main = llvm.entry("min_caml_start")
-        let pg = g(&env, e)
-
+        _ = g(&env, e)
         _ = llvm.emitfunc("main")
         _ = llvm.emitret(llvm.emitcall(caml_main))
-
         ir = String(llvm.dump())
     }
+    static func f(_ fundefs: [Asm.Fundef], _ e: Asm) -> String { Emit(fundefs, e).ir }
 }
 
-final class MinCaml {
-    @MainActor static let shared: MinCaml = MinCaml()
-
+struct MinCaml {
     let ps = Parser()
     init() { }
-
+    static func f(_ input: String) async -> [(String, String)]? {
+        MinCaml().handle(input)
+    }
     func handle(_ input: String) -> [(String, String)]? {
         let r = ps.parse(input, "exprs")
         guard let asts = r.ast else { return nil }
         var out: [(String, String)] = []
         asts.forEach { ast in
-            out.append((ast.description, "AST"))
-            let x1 = Typing(ast)
-            out.append((x1.s.description, "Typing"))
-            let x2 = KNormal(x1.s)
-            out.append((x2.k.description, "KNormal"))
-            let x3 = Alpha(x2.k)
-            out.append((x3.k.description, "Alpha"))
-
-            //optimization begin
-            let x4 = Beta(x3.k)
-            out.append((x4.k.description, "Beta"))
-            let x5 = Assoc(x4.k)
-            out.append((x5.k.description, "Assoc"))
-            let x6 = Inline(x5.k)
-            out.append((x6.k.description, "Inline"))
-            let x7 = ConstFold(x6.k)
-            out.append((x7.k.description, "ConstFold"))
-            let x8 = Elim(x7.k)
-            out.append((x8.k.description, "Elim"))
-            //optimization end
-
-            let x9 = Closure(x8.k)
-            x9.toplevel.forEach { out.append(($0.description, "-")) }
-            out.append((x9.e.description, "Closure"))
-            let x10 = Virtual(x9.toplevel, x9.e) // do nothing
-            x10.fundefs.forEach { out.append(($0.description, "-")) }
-            out.append((x10.e.description, "Virtual"))
-            let x11 = Emit(x10.fundefs, x10.e)
-            out.append((x11.ir, "Emit"))
+            var a = ast;          out.append((a.description, "AST"))
+            a = Typing.f(a);      out.append((a.description, "Typing"))
+            var k = KNormal.f(a); out.append((k.description, "KNormal"))
+            k = Alpha.f(k);       out.append((k.description, "Alpha"))
+            for _ in 0..<1 {    // optimization
+                k = Beta.f(k);        out.append((k.description, "Beta"))
+                k = Assoc.f(k);       out.append((k.description, "Assoc"))
+                k = Inline.f(k);      out.append((k.description, "Inline"))
+                k = ConstFold.f(k);   out.append((k.description, "ConstFold"))
+                k = Elim.f(k);        out.append((k.description, "Elim"))
+            }
+            let (fdc, c) = Closure.f(k);        fdc.forEach { out.append(($0.description, "-")) }; out.append((c.description, "Closure"))
+            let (fda, asm) = Virtual.f(fdc, c); fda.forEach { out.append(($0.description, "-")) }; out.append((asm.description, "Virtual"))
+            let x = Emit.f(fda, asm);           out.append((x, "Emit"))
         }
         return out
     }

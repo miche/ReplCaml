@@ -1,5 +1,4 @@
 #include "swift/bridging"
-//#include "ReplCaml-Bridging-Swift.h"
 #include <string>
 
 #pragma once
@@ -36,10 +35,6 @@ public:
     func_t emitfunc(str_t name) const;
     value_t emitcall(func_t link) const;
     value_t emitret(value_t value) const;
-
-    //value_t emitload(type_t typ, value_t ptr) const;
-    //value_t gep(value_t ptr, int index, int field) const;
-    //value_t emitstore(type_t typ, value_t value, value_t ptr, int offset) const;
 
     std::string dump(void) const;
 

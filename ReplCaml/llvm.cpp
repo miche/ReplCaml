@@ -91,13 +91,7 @@ public:
         llvm::FunctionType *ft = llvm::FunctionType::get(i32_t, {ptr_t, i32_t}, 0);
         return call(ft, fn, {(llvm::Value *)cl, (llvm::Value *)w});
     }
-    inline std::string dump() {
-        std::string buf;
-        llvm::raw_string_ostream os(buf);
-        mod.print(os, nullptr);
-        os.flush();
-        return buf;
-    };
+    inline std::string dump() { std::string buf; llvm::raw_string_ostream os(buf); mod.print(os, nullptr); os.flush(); return buf; };
 };
 
 LLVMKit::Impl::Impl(const char *name): mod(name, ctx), bldr(llvm::IRBuilder<>(ctx)) {
@@ -145,27 +139,15 @@ func_t LLVMKit::emitfunc(str_t name) const { return impl->appendbb(impl->func(na
 value_t LLVMKit::emitcall(func_t link) const { return impl->call(link, {}); }
 value_t LLVMKit::emitret(value_t value) const { return impl->ret(value); }
 
-//value_t LLVMKit::emitload(type_t typ, value_t ptr) const { return impl->load(typ, ptr); }
-//value_t LLVMKit::gep(value_t ptr, int index, int field) const { return impl->gep(impl->cl_t, ptr, {impl->i32(index), impl->i32(field)}); }
-//value_t LLVMKit::emitstore(type_t typ, value_t value, value_t ptr, int offset) const { return impl->store(impl->i32(value), ptr); }
-
 std::string LLVMKit::dump(void) const { return impl->dump(); }
 
 /*
- void *LLVMKit::calldir(const char *name, const void *callee, const void *a, const void *w) const {
- return impl->call(callee, {impl->nullp, (llvm::Value *)a, (llvm::Value *)w}, name);
- }
- void *LLVMKit::emitret(const int value) const {
- return impl->ret(value);
- }
- void *LLVMKit::emitret(void) const {
- return impl->ret();
- }
- void *LLVMKit::emitalloca(const char *name) const {
- return impl->alloc(impl->i32_t, name);
- }
-
- void *LLVMKit::emitlet(const char *name, const int value) const {
- return impl->store(impl->i32(value), impl->alloc(impl->i32_t, name));
- }
+ value_t LLVMKit::emitload(type_t typ, value_t ptr) const { return impl->load(typ, ptr); }
+ value_t LLVMKit::gep(value_t ptr, const int index, const int field) const { return impl->gep(impl->cl_t, ptr, {impl->i32(index), impl->i32(field)}); }
+ value_t LLVMKit::emitstore(type_t typ, value_t value, value_t ptr, const int offset) const { return impl->store(impl->i32(value), ptr); }
+ value_t LLVMKit::calldir(str_t name, value_t callee, value_t a, value_t w) const { return impl->call(callee, {impl->nullp, (llvm::Value *)a, (llvm::Value *)w}, name); }
+ value_t LLVMKit::emitret(const int value) const { return impl->ret(value); }
+ value_t LLVMKit::emitret(void) const { return impl->ret(); }
+ value_t LLVMKit::emitalloca(str_t name) const { return impl->alloc(impl->i32_t, name); }
+ value_t LLVMKit::emitlet(str_t name, const int value) const { return impl->store(impl->i32(value), impl->alloc(impl->i32_t, name)); }
  */
