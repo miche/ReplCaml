@@ -1,4 +1,5 @@
 import Foundation
+import Combine
 import CxxStdlib
 
 typealias Env<T> = [String: T]
@@ -693,7 +694,7 @@ indirect enum Asm: CustomStringConvertible {
         case ADD(Id.T, Id.T)
         case LDi(Id.T, Int)
         case MUL(Id.T, Id.T)
-        case CALLCLS(Id.T, [Ident])
+        case CALLCLS(Ident, [Ident])
         case CALLDIR(Id.T, [Ident])
         case MAKECLOSURE(Ident, [Ident])
 
@@ -759,11 +760,12 @@ struct Virtual {
             return concat(e1, xt, e2)
         case .VAR(let x): return .ANS(.MOV(x))
         case .MakeCls(let xt, _, let fv, let b):
-            env[xt.name] = xt.typ
-            let e2 = g(&env, b)
-            return .LET(xt, .MAKECLOSURE(xt, fv.map {Ident($0, env[$0]!)}), e2)
+            var env2 = env // TODO: consider this modification
+            env2[xt.name] = xt.typ
+            let e2 = g(&env2, b)
+            return .LET(xt, .MAKECLOSURE(xt, fv.map {Ident($0, env2[$0]!)}), e2)
         case .AppCls(let x, let ys):
-            return .ANS(.CALLCLS(x, ys.map { Ident($0, env[$0]!) }))
+            return .ANS(.CALLCLS(Ident(x, env[x]!), ys.map { Ident($0, env[$0]!) }))
         case .AppDir(let x, let ys):
             return .ANS(.CALLDIR(x, ys.map { Ident($0, env[$0]!) }))
         }
@@ -805,10 +807,14 @@ struct Emit {
         default: return llvm.unit
         }
     }
+    func t2t(_ typ: Typ, _ index: Int) -> OpaquePointer {
+        guard case .FUN(let args, _) = typ else { return llvm.unit }
+        return t2t(args[index])
+    }
     func h(_ env: inout [String: OpaquePointer?], _ fd: Asm.Fundef) {
         let rett = t2t(fd.ret)
         if fd.args.count == 1 { //fd.args[0].typ
-            let f = llvm.makecls(fd.name.name, fd.args[0].name, rett)
+            let f = llvm.makecls(fd.name.name, rett, fd.args[0].name, t2t(fd.args[0].typ))
             env[fd.name.name] = f
             env[fd.args[0].name] = llvm.arg(f, 0)
         }
@@ -820,11 +826,11 @@ struct Emit {
         case .ADD(let l, let r): return llvm.add(env[l]!, env[r]!)
         case .NOP: return llvm.nop()
         case .MUL(let l, let r): return llvm.mul(env[l]!, env[r]!)
-        case .CALLCLS(let name, let arg): return llvm.callcls(env[name]!, env[arg[0].name]!!)
-        case .CALLDIR(let name, let arg): return llvm.calldir(name, env[name]!, env[arg[0].name]!!)
-        case .MAKECLOSURE(let name, let args): return llvm.makeclosure(env[name.name]!, env[args.first!.name]!, llvm.ptr)
+        case .CALLCLS(let name, let arg): return llvm.callcls(env[name.name]!, env[arg[0].name]!!, t2t(name.typ, 0)) /*env["adder.6"]!c2f[env[name]!!]!*/
+        case .CALLDIR(let name, let arg): return llvm.calldir(name, env[name]!, env[arg[0].name]!!) // TODO: needs function to obtain function type
+        case .MAKECLOSURE(let name, let args): let cl = llvm.makeclosure(env[name.name]!, env[args.first!.name]!, llvm.i32)!; return cl
         case .MOV(let ptr): return env[ptr]!! // llvm.emitload(llvm.ptr, env[ptr]!)
-        case .LDi(let ptr, let index): return llvm.closure_arg(env[ptr]!, Int32(index), n!.name)
+        case .LDi(let ptr, let index): return llvm.closure_arg(env[ptr]!, Int32(index), n!.name, t2t(n!.typ))
         }
     }
     func g(_ env: inout [String: OpaquePointer?], _ e: Asm) -> OpaquePointer {
@@ -848,32 +854,46 @@ struct Emit {
     static func f(_ fundefs: [Asm.Fundef], _ e: Asm) -> String { Emit(fundefs, e).ir }
 }
 
-struct MinCaml {
-    let ps = Parser()
+@MainActor
+class Compiler: ObservableObject {
+    @Published var out: [Chat] = []
+    @Published var isProcessing: Bool = false
+
     init() { }
-    static func f(_ input: String) async -> [(String, String)]? {
-        MinCaml().handle(input)
+
+    func append(_ tag: String, _ text: String) async {
+        await MainActor.run { out.append(.response(tag: tag, text: text)) }
     }
-    func handle(_ input: String) -> [(String, String)]? {
-        let r = ps.parse(input, "exprs")
-        guard let asts = r.ast else { return nil }
-        var out: [(String, String)] = []
-        asts.forEach { ast in
-            var a = ast;          out.append((a.description, "AST"))
-            a = Typing.f(a);      out.append((a.description, "Typing"))
-            var k = KNormal.f(a); out.append((k.description, "KNormal"))
-            k = Alpha.f(k);       out.append((k.description, "Alpha"))
-            for _ in 0..<1 {    // optimization
-                k = Beta.f(k);        out.append((k.description, "Beta"))
-                k = Assoc.f(k);       out.append((k.description, "Assoc"))
-                k = Inline.f(k);      out.append((k.description, "Inline"))
-                k = ConstFold.f(k);   out.append((k.description, "ConstFold"))
-                k = Elim.f(k);        out.append((k.description, "Elim"))
+
+    func compile(_ code: String) {
+        isProcessing = true
+        Task {
+            defer { self.isProcessing = false }
+            out.append(.request(text: code))
+            let r = Parser().parse(code, "exprs")
+            guard let asts = r.ast else { return }
+            for ast in asts {
+                var a = ast;          await append("AST", a.description)
+                a = Typing.f(a);      await append("Typing", a.description)
+                var k = KNormal.f(a); await append("KNormal", k.description)
+                k = Alpha.f(k);       await append("Alpha", k.description)
+                for _ in 0..<1 {    // optimization
+                    k = Beta.f(k);        await append("Beta", k.description)
+                    k = Assoc.f(k);       await append("Assoc", k.description)
+                    k = Inline.f(k);      await append("Inline", k.description)
+                    k = ConstFold.f(k);   await append("ConstFold", k.description)
+                    k = Elim.f(k);        await append("Elim", k.description)
+                }
+                let (fdc, c) = Closure.f(k); for fd in fdc { await append("-", fd.description) }
+                await append("Closure", c.description)
+                let (fda, asm) = Virtual.f(fdc, c); for fd in fda { await append("-", fd.description) }
+                await append("Virtual", asm.description)
+                let x = Emit.f(fda, asm); await append("Emit", x)
             }
-            let (fdc, c) = Closure.f(k);        fdc.forEach { out.append(($0.description, "-")) }; out.append((c.description, "Closure"))
-            let (fda, asm) = Virtual.f(fdc, c); fda.forEach { out.append(($0.description, "-")) }; out.append((asm.description, "Virtual"))
-            let x = Emit.f(fda, asm);           out.append((x, "Emit"))
         }
-        return out
+    }
+    static func f(_ input: String) {
+        Compiler().compile(input)
     }
 }
+

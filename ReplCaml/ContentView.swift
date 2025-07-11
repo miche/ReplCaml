@@ -1,16 +1,15 @@
 import SwiftUI
 
+enum Chat: Hashable, Error {
+    case request(text: String)
+    case response(tag: String, text: String)
+}
+
 struct ContentView: View {
-    @State private var inputText: String = ""
-    @State private var messages: [Chat] = []
-    @State private var isProcessing = false
+    @State private var code: String = ""
     @FocusState private var isFocused: Bool
     static private let chatFont = Font.custom("SF Mono", size: 14)
-
-    enum Chat: Hashable, Error {
-        case request(text: String)
-        case response(tag: String, text: String)
-    }
+    @StateObject private var compiler = Compiler()
 
     struct Bubble: View {
         var text: String
@@ -35,7 +34,7 @@ struct ContentView: View {
                 ScrollViewReader { reader in
                     ScrollView(showsIndicators: false) {
                         VStack(alignment: .leading, spacing: 4) {
-                            ForEach(messages, id: \.self) { response in
+                            ForEach(compiler.out, id: \.self) { response in
                                 HStack(alignment: .bottom) {
                                     switch response {
                                     case .request(text: let text):
@@ -47,51 +46,24 @@ struct ContentView: View {
                                 }
                             }
                         }
-                    }.onChange(of: messages) {
-                        if let lastResponse = messages.last {
+                    }.onChange(of: compiler.out) {
+                        if let lastResponse = compiler.out.last {
                             reader.scrollTo(lastResponse, anchor: .bottom)
                         }
                     }
                 }
-                if isProcessing { ProgressView().background(.clear) }
+                if compiler.isProcessing { ProgressView().background(.clear) }
             }
-            TextField("let rec ... ", text: $inputText, axis: .vertical)
+            TextField("let rec ... ", text: $code, axis: .vertical)
                 .font(ContentView.chatFont)
                 .textFieldStyle(.roundedBorder)
                 .autocorrectionDisabled()
                 .focusEffectDisabled()
                 .focused($isFocused)
-                .onSubmit { Task { await performAsyncTask() } }
+                .onSubmit { compiler.compile(code) }
         }
         .padding()
         .onAppear { isFocused = true }
-    }
-
-    @MainActor
-    func performAsyncTask() async {
-        guard !isProcessing else { return }
-        isProcessing = true
-        defer { isProcessing = false }
-        do {
-            messages.append(.request(text: inputText))
-            let result = try await compile(inputText)
-            messages.append(contentsOf: result)
-        } catch {
-            messages.append(error as! ContentView.Chat)
-        }
-    }
-
-    func compile(_ code: String) async throws -> [Chat] {
-        if let response = await MinCaml.f(code) {
-            return response.reduce([]) { acc, tt in
-                if acc.isEmpty { return [.response(tag: tt.1, text: tt.0)] }
-                else {
-                    if case .response(_, let text) = acc.last!, text != tt.0 {
-                        return acc + [.response(tag: tt.1, text: tt.0)]
-                    } else { return acc }
-                }
-            }
-        } else { throw Chat.response(tag: "compile failed", text: code) }
     }
 }
 

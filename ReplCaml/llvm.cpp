@@ -85,10 +85,10 @@ public:
         store(gep(cl_t, ptr, {i32(1)}), closureptr);
         return ptr;
     }
-    inline llvm::CallInst *callclosure(llvm::Value *cl, llvm::Value *w) {
+    inline llvm::CallInst *callclosure(llvm::Value *cl, llvm::Value *w, llvm::Type *typ) {
         llvm::Value *fnp = gep(cl_t, cl, {i32(0), i32(0)});
         llvm::Function *fn = (llvm::Function *)load(ptr_t, fnp);
-        llvm::FunctionType *ft = llvm::FunctionType::get(i32_t, {ptr_t, i32_t}, 0);
+        llvm::FunctionType *ft = llvm::FunctionType::get(i32_t, {ptr_t, typ}, false);
         return call(ft, fn, {(llvm::Value *)cl, (llvm::Value *)w});
     }
     inline std::string dump() { std::string buf; llvm::raw_string_ostream os(buf); mod.print(os, nullptr); os.flush(); return buf; };
@@ -123,14 +123,14 @@ LLVMKit::LLVMKit(const char *name): impl(new Impl(name)) {
 
 value_t LLVMKit::nop(void) const { return nullptr; }
 value_t LLVMKit::ans(value_t value) const  { return impl->ans(value); }
-value_t LLVMKit::set(str_t name, const int value) const {  return impl->i32(value); }
+value_t LLVMKit::set(str_t name, const int value) const { return impl->i32(value); }
 value_t LLVMKit::add(value_t a, value_t w) const { return impl->add(a, w); }
 value_t LLVMKit::mul(value_t a, value_t w) const { return impl->mul(a, w); }
 value_t LLVMKit::calldir(str_t name, func_t callee, value_t w) const { return impl->call(callee, {impl->nullp, w}, name); }
-value_t LLVMKit::callcls(closure_t cl, value_t w) const { return impl->callclosure(cl, w); }
-func_t LLVMKit::makecls(str_t cl, str_t w, type_t typ) const { return impl->appendbb(impl->func(cl, typ, w, impl->i32_t), "entry"); }
+value_t LLVMKit::callcls(closure_t cl, value_t w, type_t typ) const { return impl->callclosure(cl, w, typ); }
+func_t LLVMKit::makecls(str_t cl, type_t rett, str_t w, type_t wt) const { return impl->appendbb(impl->func(cl, rett, w, wt), "entry"); }
 value_t LLVMKit::arg(func_t link, const int index) const { return impl->arg(link, index + 1); }
-value_t LLVMKit::closure_arg(closure_t link, const int index, str_t name) const { return impl->closure_arg(link, index, name, impl->i32_t); }
+value_t LLVMKit::closure_arg(closure_t link, const int index, str_t arg, type_t argt) const { return impl->closure_arg(link, index, arg, argt); }
 closure_t LLVMKit::makeclosure(func_t cl, value_t w, type_t typ) const { return impl->makeclosure(cl, w); }
 
 func_t LLVMKit::entry(str_t name) const { return impl->appendbb(impl->func(name, impl->i32_t, impl->defaultLinkage), "entry"); }

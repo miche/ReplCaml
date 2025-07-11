@@ -21,17 +21,16 @@ public:
     value_t nop(void) const;
     value_t ans(value_t value) const;
     value_t set(str_t name, const int value) const;
-    value_t setl(str_t name, value_t value) const;
     value_t add(value_t a, value_t w) const;
     value_t mul(value_t a, value_t w) const;
     value_t calldir(str_t name, func_t callee, value_t w) const;
-    value_t callcls(closure_t cl, value_t w) const;
-    func_t makecls(str_t name, str_t w, type_t typ) const;
+    value_t callcls(closure_t cl, value_t w, type_t typ) const;
+    func_t makecls(str_t name, type_t rett, str_t w, type_t wt) const;
     value_t arg(func_t link, const int index) const;
-    value_t closure_arg(closure_t f, const int index, str_t n) const;
+    value_t closure_arg(closure_t f, const int index, str_t arg, type_t argt) const;
     closure_t makeclosure(func_t cl, value_t w, type_t t) const;
-    func_t entry(str_t name) const;
 
+    func_t entry(str_t name) const;
     func_t emitfunc(str_t name) const;
     value_t emitcall(func_t link) const;
     value_t emitret(value_t value) const;
