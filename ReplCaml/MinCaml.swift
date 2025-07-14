@@ -202,7 +202,7 @@ struct Parser {
         "float": .terminal(/\d+\.\d+/, { x in .FLOAT(Double(x)!) }),
         "bool": .choice([.terminal(/true\b/, { _ in .BOOL(true) }),
                          .terminal(/false\b/, { _ in .BOOL(false) })], thru),
-        "ident": .sequence([.forbid([.terminal(/(?:in|let|rec|if|then|else|true|false)\b/, word)], thru), .ref("ident0")], thru),
+        "ident": .sequence([.forbid([.terminal(/(?:in|let|rec|if|then|else|true|false)\b/, word)]), .ref("ident0")], thru),
         "ident0": .terminal(/[A-Za-z_][A-Za-z0-9_]*/, { .VAR($0) }),
     ]
     var parser: PEGParser<Syntax>
@@ -694,6 +694,7 @@ indirect enum Asm: CustomStringConvertible {
         case ADD(Id.T, Id.T)
         case LDi(Id.T, Int)
         case MUL(Id.T, Id.T)
+
         case CALLCLS(Ident, [Ident])
         case CALLDIR(Id.T, [Ident])
         case MAKECLOSURE(Ident, [Ident])
@@ -799,7 +800,7 @@ struct Emit {
     private let llvm = LLVMKit("mincaml")
     var ir: String = "emit"
 
-    func t2t(_ typ: Typ) -> OpaquePointer {
+    func t2t(_ typ: Typ) -> type_t {
         switch typ {
         case .INT: return llvm.i32
         case .FLOAT: return llvm.dbl;
@@ -811,29 +812,28 @@ struct Emit {
         guard case .FUN(let args, _) = typ else { return llvm.unit }
         return t2t(args[index])
     }
-    func h(_ env: inout [String: OpaquePointer?], _ fd: Asm.Fundef) {
-        let rett = t2t(fd.ret)
+    func h(_ env: inout [String: OpaquePointer], _ fd: Asm.Fundef) {
         if fd.args.count == 1 { //fd.args[0].typ
-            let f = llvm.makecls(fd.name.name, rett, fd.args[0].name, t2t(fd.args[0].typ))
+            let f = llvm.makecls(fd.name.name, t2t(fd.ret), fd.args[0].name, t2t(fd.args[0].typ))
             env[fd.name.name] = f
             env[fd.args[0].name] = llvm.arg(f, 0)
         }
         _ = g(&env, fd.body)
     }
-    func g2(_ env: inout [String: OpaquePointer?], _ n: Ident?, _ e: Asm.Exp) -> OpaquePointer {
+    func g2(_ env: inout [String: OpaquePointer], _ n: Ident?, _ e: Asm.Exp) -> OpaquePointer {
         switch e {
         case .SET(let v): return llvm.set(n?.name, Int32(v))
         case .ADD(let l, let r): return llvm.add(env[l]!, env[r]!)
         case .NOP: return llvm.nop()
         case .MUL(let l, let r): return llvm.mul(env[l]!, env[r]!)
-        case .CALLCLS(let name, let arg): return llvm.callcls(env[name.name]!, env[arg[0].name]!!, t2t(name.typ, 0)) /*env["adder.6"]!c2f[env[name]!!]!*/
-        case .CALLDIR(let name, let arg): return llvm.calldir(name, env[name]!, env[arg[0].name]!!) // TODO: needs function to obtain function type
+        case .CALLCLS(let name, let arg): return llvm.callcls(env[name.name]!, env[arg[0].name]!, t2t(name.typ, 0)) /*env["adder.6"]!c2f[env[name]!!]!*/
+        case .CALLDIR(let name, let arg): return llvm.calldir(name, env[name]!, env[arg[0].name]!)
         case .MAKECLOSURE(let name, let args): let cl = llvm.makeclosure(env[name.name]!, env[args.first!.name]!, llvm.i32)!; return cl
-        case .MOV(let ptr): return env[ptr]!! // llvm.emitload(llvm.ptr, env[ptr]!)
+        case .MOV(let ptr): return env[ptr]! // llvm.emitload(llvm.ptr, env[ptr]!)
         case .LDi(let ptr, let index): return llvm.closure_arg(env[ptr]!, Int32(index), n!.name, t2t(n!.typ))
         }
     }
-    func g(_ env: inout [String: OpaquePointer?], _ e: Asm) -> OpaquePointer {
+    func g(_ env: inout [String: OpaquePointer], _ e: Asm) -> OpaquePointer {
         switch e {
         case .ANS(let x): return llvm.ans(g2(&env, nil, x))
         case .LET(let n, let v, let b): env[n.name] = g2(&env, n, v); return g(&env, b)
@@ -843,7 +843,7 @@ struct Emit {
     // let rec make_adder x = let rec adder y = x + y in adder in (make_adder 3) 7
 
     init(_ fundefs: [Asm.Fundef], _ e: Asm) {
-        var env: [String: OpaquePointer?] = [:]
+        var env: [String: OpaquePointer] = [:]
         fundefs.forEach { h(&env, $0) }
         let caml_main = llvm.entry("min_caml_start")
         _ = g(&env, e)
@@ -856,39 +856,49 @@ struct Emit {
 
 @MainActor
 class Compiler: ObservableObject {
-    @Published var out: [Chat] = []
+    @Published private(set) var out: [ChatMsg] = []
     @Published var isProcessing: Bool = false
+    private var pendingChats = CurrentValueSubject<[Chat], Never>([])
+    private var cancellables = Set<AnyCancellable>()
 
-    init() { }
-
-    func append(_ tag: String, _ text: String) async {
-        await MainActor.run { out.append(.response(tag: tag, text: text)) }
+    init() {
+        pendingChats
+            .debounce(for: .milliseconds(100), scheduler: RunLoop.main)
+            .removeDuplicates()
+            .sink { [weak self] chats in
+                self?.out.append(contentsOf: chats.map {ChatMsg(id: UUID(), chat: $0)})
+                self?.pendingChats.send([])
+            }
+            .store(in: &cancellables)
+    }
+    func append(_ chat: Chat) {
+        pendingChats.send(pendingChats.value + [chat])
     }
 
     func compile(_ code: String) {
         isProcessing = true
         Task {
             defer { self.isProcessing = false }
-            out.append(.request(text: code))
+            append(.request(text: code))
             let r = Parser().parse(code, "exprs")
-            guard let asts = r.ast else { return }
+            guard let asts = r.ast else { append(.error(tag: "Error", text: "syntax error")); return }
             for ast in asts {
-                var a = ast;          await append("AST", a.description)
-                a = Typing.f(a);      await append("Typing", a.description)
-                var k = KNormal.f(a); await append("KNormal", k.description)
-                k = Alpha.f(k);       await append("Alpha", k.description)
+                var a = ast;          append(.response(tag: "AST", text: a.description))
+                a = Typing.f(a);      append(.response(tag: "Typing", text: a.description))
+                var k = KNormal.f(a); append(.response(tag: "KNormal", text: k.description))
+                k = Alpha.f(k);       append(.response(tag: "Alpha", text: k.description))
                 for _ in 0..<1 {    // optimization
-                    k = Beta.f(k);        await append("Beta", k.description)
-                    k = Assoc.f(k);       await append("Assoc", k.description)
-                    k = Inline.f(k);      await append("Inline", k.description)
-                    k = ConstFold.f(k);   await append("ConstFold", k.description)
-                    k = Elim.f(k);        await append("Elim", k.description)
+                    k = Beta.f(k);        append(.response(tag: "Beta", text: k.description))
+                    k = Assoc.f(k);       append(.response(tag: "Assoc", text: k.description))
+                    k = Inline.f(k);      append(.response(tag: "Inline", text: k.description))
+                    k = ConstFold.f(k);   append(.response(tag: "ConstFold", text: k.description))
+                    k = Elim.f(k);        append(.response(tag: "Elim", text: k.description))
                 }
-                let (fdc, c) = Closure.f(k); for fd in fdc { await append("-", fd.description) }
-                await append("Closure", c.description)
-                let (fda, asm) = Virtual.f(fdc, c); for fd in fda { await append("-", fd.description) }
-                await append("Virtual", asm.description)
-                let x = Emit.f(fda, asm); await append("Emit", x)
+                let (fdc, c) = Closure.f(k); for fd in fdc { append(.response(tag: "-", text: fd.description)) }
+                append(.response(tag: "Closure", text: c.description))
+                let (fda, asm) = Virtual.f(fdc, c); for fd in fda { append(.response(tag: "-", text: fd.description)) }
+                append(.response(tag: "Virtual", text: asm.description))
+                let x = Emit.f(fda, asm); append(.response(tag: "Emit", text: x))
             }
         }
     }
@@ -896,4 +906,3 @@ class Compiler: ObservableObject {
         Compiler().compile(input)
     }
 }
-

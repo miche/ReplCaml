@@ -1,8 +1,22 @@
 import SwiftUI
 
-enum Chat: Hashable, Error {
+struct ChatMsg: Identifiable, Hashable {
+    var id: UUID
+    var chat: Chat
+}
+
+enum Chat: Hashable {
     case request(text: String)
     case response(tag: String, text: String)
+    case error(tag: String, text: String)
+
+    static func == (lhs: Chat, rhs: Chat) -> Bool {
+        switch (lhs, rhs) {
+        case (.request(let l), .request(let r)): return l == r
+        case (.response(_, let l), .response(_, let r)): return l == r // ignoring tag
+        default: return false
+        }
+    }
 }
 
 struct ContentView: View {
@@ -36,12 +50,15 @@ struct ContentView: View {
                         VStack(alignment: .leading, spacing: 4) {
                             ForEach(compiler.out, id: \.self) { response in
                                 HStack(alignment: .bottom) {
-                                    switch response {
+                                    switch response.chat {
                                     case .request(text: let text):
                                         Bubble(text: text, width: .infinity, align: .trailing, color: .accentColor)
                                     case .response(tag: let tag, text: let text):
                                         Bubble(text: text, align: .leading, color: .gray)
                                         Text(tag).font(.footnote)
+                                    case .error(tag: let tag, text: let text):
+                                        Bubble(text: text, align: .leading, color: .red)
+                                        Text(tag).font(.footnote).foregroundStyle(.red)
                                     }
                                 }
                             }

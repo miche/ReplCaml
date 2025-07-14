@@ -9,10 +9,32 @@
 /* Begin PBXBuildFile section */
 		C64A10542E125B4E007779CB /* .gitignore in Resources */ = {isa = PBXBuildFile; fileRef = C64A10532E125B44007779CB /* .gitignore */; };
 		C6BA80B72E1E102E00B5DC1A /* libLLVM.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = C6E330832E164F5D008C0B78 /* libLLVM.dylib */; };
+		C6CE2EA12E213390002C8957 /* libLLVM.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = C6E330832E164F5D008C0B78 /* libLLVM.dylib */; };
+		C6CE2EA32E213390002C8957 /* .gitignore in Resources */ = {isa = PBXBuildFile; fileRef = C64A10532E125B44007779CB /* .gitignore */; };
 		C6E330842E164F5D008C0B78 /* libLLVM.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = C6E330832E164F5D008C0B78 /* libLLVM.dylib */; };
 /* End PBXBuildFile section */
 
+/* Begin PBXContainerItemProxy section */
+		C6385EDE2E24C46000E0AE66 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = C6A09C572E03B15B004D6D12 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = C6CE2E9E2E213390002C8957;
+			remoteInfo = Shift;
+		};
+/* End PBXContainerItemProxy section */
+
 /* Begin PBXCopyFilesBuildPhase section */
+		C6CE2EA42E213390002C8957 /* Embed Frameworks */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 10;
+			files = (
+			);
+			name = "Embed Frameworks";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		C6E3305B2E163C41008C0B78 /* Embed Frameworks */ = {
 			isa = PBXCopyFilesBuildPhase;
 			buildActionMask = 2147483647;
@@ -37,16 +59,54 @@
 /* Begin PBXFileReference section */
 		C616B0142E1BA9620037BA89 /* LICENSE */ = {isa = PBXFileReference; lastKnownFileType = text; path = LICENSE; sourceTree = "<group>"; };
 		C616B0152E1BA96D0037BA89 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
+		C6385EDA2E24C46000E0AE66 /* ShiftTest.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ShiftTest.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		C64A10532E125B44007779CB /* .gitignore */ = {isa = PBXFileReference; lastKnownFileType = text; path = .gitignore; sourceTree = "<group>"; };
 		C6A09C5F2E03B15B004D6D12 /* ReplCaml.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ReplCaml.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		C6CE2EA82E213390002C8957 /* Shift.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Shift.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		C6E330752E164BA7008C0B78 /* Bridging */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = Bridging; sourceTree = BUILT_PRODUCTS_DIR; };
 		C6E330832E164F5D008C0B78 /* libLLVM.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libLLVM.dylib; path = ../../../../opt/homebrew/Cellar/llvm/20.1.7/lib/libLLVM.dylib; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		C6CE2EA92E213390002C8957 /* Exceptions for "ReplCaml" folder in "Shift" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				llvm.cpp,
+				MinCaml.swift,
+				ReplCamlApp.swift,
+			);
+			target = C6CE2E9E2E213390002C8957 /* Shift */;
+		};
+		C6CE2EB62E213646002C8957 /* Exceptions for "Shift" folder in "ReplCaml" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Shift.swift,
+				ShiftApp.swift,
+			);
+			target = C6A09C5E2E03B15B004D6D12 /* ReplCaml */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
+		C6385EDB2E24C46000E0AE66 /* ShiftTest */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = ShiftTest;
+			sourceTree = "<group>";
+		};
 		C6A09C612E03B15B004D6D12 /* ReplCaml */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				C6CE2EA92E213390002C8957 /* Exceptions for "ReplCaml" folder in "Shift" target */,
+			);
 			path = ReplCaml;
+			sourceTree = "<group>";
+		};
+		C6CE2EAA2E2133C0002C8957 /* Shift */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				C6CE2EB62E213646002C8957 /* Exceptions for "Shift" folder in "ReplCaml" target */,
+			);
+			path = Shift;
 			sourceTree = "<group>";
 		};
 		C6E330762E164BA7008C0B78 /* Bridging */ = {
@@ -57,11 +117,26 @@
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
+		C6385ED72E24C46000E0AE66 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		C6A09C5C2E03B15B004D6D12 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
 				C6BA80B72E1E102E00B5DC1A /* libLLVM.dylib in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		C6CE2EA02E213390002C8957 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				C6CE2EA12E213390002C8957 /* libLLVM.dylib in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -82,8 +157,10 @@
 				C616B0142E1BA9620037BA89 /* LICENSE */,
 				C616B0152E1BA96D0037BA89 /* README.md */,
 				C64A10532E125B44007779CB /* .gitignore */,
+				C6CE2EAA2E2133C0002C8957 /* Shift */,
 				C6A09C612E03B15B004D6D12 /* ReplCaml */,
 				C6E330762E164BA7008C0B78 /* Bridging */,
+				C6385EDB2E24C46000E0AE66 /* ShiftTest */,
 				C6E330482E163137008C0B78 /* Frameworks */,
 				C6A09C602E03B15B004D6D12 /* Products */,
 			);
@@ -94,6 +171,8 @@
 			children = (
 				C6A09C5F2E03B15B004D6D12 /* ReplCaml.app */,
 				C6E330752E164BA7008C0B78 /* Bridging */,
+				C6CE2EA82E213390002C8957 /* Shift.app */,
+				C6385EDA2E24C46000E0AE66 /* ShiftTest.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -109,6 +188,29 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
+		C6385ED92E24C46000E0AE66 /* ShiftTest */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = C6385EE22E24C46000E0AE66 /* Build configuration list for PBXNativeTarget "ShiftTest" */;
+			buildPhases = (
+				C6385ED62E24C46000E0AE66 /* Sources */,
+				C6385ED72E24C46000E0AE66 /* Frameworks */,
+				C6385ED82E24C46000E0AE66 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				C6385EDF2E24C46000E0AE66 /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				C6385EDB2E24C46000E0AE66 /* ShiftTest */,
+			);
+			name = ShiftTest;
+			packageProductDependencies = (
+			);
+			productName = ShiftTest;
+			productReference = C6385EDA2E24C46000E0AE66 /* ShiftTest.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
 		C6A09C5E2E03B15B004D6D12 /* ReplCaml */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = C6A09C6B2E03B15B004D6D12 /* Build configuration list for PBXNativeTarget "ReplCaml" */;
@@ -124,12 +226,37 @@
 			);
 			fileSystemSynchronizedGroups = (
 				C6A09C612E03B15B004D6D12 /* ReplCaml */,
+				C6CE2EAA2E2133C0002C8957 /* Shift */,
 			);
 			name = ReplCaml;
 			packageProductDependencies = (
 			);
 			productName = ReplCaml;
 			productReference = C6A09C5F2E03B15B004D6D12 /* ReplCaml.app */;
+			productType = "com.apple.product-type.application";
+		};
+		C6CE2E9E2E213390002C8957 /* Shift */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = C6CE2EA52E213390002C8957 /* Build configuration list for PBXNativeTarget "Shift" */;
+			buildPhases = (
+				C6CE2E9F2E213390002C8957 /* Sources */,
+				C6CE2EA02E213390002C8957 /* Frameworks */,
+				C6CE2EA22E213390002C8957 /* Resources */,
+				C6CE2EA42E213390002C8957 /* Embed Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				C6A09C612E03B15B004D6D12 /* ReplCaml */,
+				C6CE2EAA2E2133C0002C8957 /* Shift */,
+			);
+			name = Shift;
+			packageProductDependencies = (
+			);
+			productName = ReplCaml;
+			productReference = C6CE2EA82E213390002C8957 /* Shift.app */;
 			productType = "com.apple.product-type.application";
 		};
 		C6E330742E164BA7008C0B78 /* Bridging */ = {
@@ -164,6 +291,10 @@
 				LastSwiftUpdateCheck = 1640;
 				LastUpgradeCheck = 1640;
 				TargetAttributes = {
+					C6385ED92E24C46000E0AE66 = {
+						CreatedOnToolsVersion = 16.4;
+						TestTargetID = C6CE2E9E2E213390002C8957;
+					};
 					C6A09C5E2E03B15B004D6D12 = {
 						CreatedOnToolsVersion = 16.4;
 					};
@@ -188,11 +319,20 @@
 			targets = (
 				C6A09C5E2E03B15B004D6D12 /* ReplCaml */,
 				C6E330742E164BA7008C0B78 /* Bridging */,
+				C6CE2E9E2E213390002C8957 /* Shift */,
+				C6385ED92E24C46000E0AE66 /* ShiftTest */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
+		C6385ED82E24C46000E0AE66 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		C6A09C5D2E03B15B004D6D12 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -201,10 +341,32 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		C6CE2EA22E213390002C8957 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				C6CE2EA32E213390002C8957 /* .gitignore in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
+		C6385ED62E24C46000E0AE66 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		C6A09C5B2E03B15B004D6D12 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		C6CE2E9F2E213390002C8957 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -220,7 +382,47 @@
 		};
 /* End PBXSourcesBuildPhase section */
 
+/* Begin PBXTargetDependency section */
+		C6385EDF2E24C46000E0AE66 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = C6CE2E9E2E213390002C8957 /* Shift */;
+			targetProxy = C6385EDE2E24C46000E0AE66 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
 /* Begin XCBuildConfiguration section */
+		C6385EE02E24C46000E0AE66 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = m1.ShiftTest;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Shift.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Shift";
+			};
+			name = Debug;
+		};
+		C6385EE12E24C46000E0AE66 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = m1.ShiftTest;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Shift.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Shift";
+			};
+			name = Release;
+		};
 		C6A09C692E03B15B004D6D12 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -397,6 +599,58 @@
 			};
 			name = Release;
 		};
+		C6CE2EA62E213390002C8957 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = ReplCaml/ReplCaml.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = m1.ReplCaml;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				REGISTER_APP_GROUPS = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_OBJC_BRIDGING_HEADER = "ReplCaml/ReplCaml-Bridging-Header.h";
+				SWIFT_VERSION = 6.0;
+			};
+			name = Debug;
+		};
+		C6CE2EA72E213390002C8957 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = ReplCaml/ReplCaml.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = m1.ReplCaml;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				REGISTER_APP_GROUPS = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_OBJC_BRIDGING_HEADER = "ReplCaml/ReplCaml-Bridging-Header.h";
+				SWIFT_VERSION = 6.0;
+			};
+			name = Release;
+		};
 		C6E3307A2E164BA7008C0B78 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -426,6 +680,15 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
+		C6385EE22E24C46000E0AE66 /* Build configuration list for PBXNativeTarget "ShiftTest" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				C6385EE02E24C46000E0AE66 /* Debug */,
+				C6385EE12E24C46000E0AE66 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 		C6A09C5A2E03B15B004D6D12 /* Build configuration list for PBXProject "ReplCaml" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
@@ -440,6 +703,15 @@
 			buildConfigurations = (
 				C6A09C6C2E03B15B004D6D12 /* Debug */,
 				C6A09C6D2E03B15B004D6D12 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		C6CE2EA52E213390002C8957 /* Build configuration list for PBXNativeTarget "Shift" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				C6CE2EA62E213390002C8957 /* Debug */,
+				C6CE2EA72E213390002C8957 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
