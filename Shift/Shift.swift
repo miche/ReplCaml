@@ -147,9 +147,12 @@ struct Ident: CustomStringConvertible, Equatable {
 struct IdentS: CustomStringConvertible, Equatable {
     var name: Id.T
     var typ: TypS
-    init(name: Id.T, typ: TypS) {
+    init(_ name: Id.T, _ typ: TypS) {
         self.name = name
         self.typ = typ
+    }
+    init(_ name: Syntax) {
+        self.init(name.to_s, TypS([], .UNIT))
     }
     var description: String { "(\(name) : \(typ))" }
 }
@@ -159,24 +162,25 @@ indirect enum Syntax: CustomStringConvertible, Equatable {
     case BOOL(Bool)
     case INT(Int)
     case FLOAT(Double)
+
+    // case MOP(Id.T, Syntax)  // TODO: consider this approach
     case NOT(Syntax)
     case NEG(Syntax)
     case ADD(Syntax, Syntax)
     case SUB(Syntax, Syntax)
     case FNEG(Syntax)
+    // case DOP(Id.T, Syntax, Syntax)  // TODO: consider this approach
     case FADD(Syntax, Syntax)
     case FSUB(Syntax, Syntax)
     case FMUL(Syntax, Syntax)
     case FDIV(Syntax, Syntax)
     case EQ(Syntax, Syntax)
     case LE(Syntax, Syntax)
+
     case IF(Syntax, Syntax, Syntax)
     case LET(Ident, Syntax, Syntax)
     case VAR(Id.T)
     case LETREC(Fundef, Syntax)
-//    case LETREC(Id.T, Typ.TS, [Ident], Syntax, Syntax)
-    //     | LetRec of fundef * t
-    //     and fundef = { name : Id.t * Type.ts; args : (Id.t * Type.t) list; body : t }
     case APP(Syntax, [Syntax])
     case TUPLE([Syntax])
     case LETTUPLE([Ident], Syntax, Syntax)
@@ -185,17 +189,15 @@ indirect enum Syntax: CustomStringConvertible, Equatable {
     case PUT(Syntax, Syntax, Syntax)
     case EMPTY
     case CONS(Syntax, Syntax)
-    // case MATCH(Syntax, Syntax, Ident, Ident, Syntax) // Syntax, Syntax, pat
-    case MATCH(Syntax, Syntax, Syntax) // Syntax, Syntax, pat
-                                       //     | Match of t * t * ((Id.t * Type.t) * (Id.t * Type.t) * t)
-    case pattern(Ident, Ident, Syntax) // (let xt, let yt, let e3)
+    case MATCH(Syntax, Syntax, Syntax)
     case SHIFT(IdentS, Syntax, Typ)
-    //     | Shift of (Id.t * Type.ts) * t * Type.t
     case RESET(Syntax, Typ)
-    //     | Reset of t * Type.t
 
-    func xt2str(_ xt: Ident) -> String { return "(\(xt.name) : \(xt.typ))"}
-    func xts2str(_ xts: IdentS) -> String { return "(\(xts.name) : \(xts.typ))"}
+    // temporary containers
+    case fundef(Fundef) // LETREC
+    case pattern(Ident, Ident, Syntax) // MATCH
+    case punct(String) // terminal
+    case composite([Syntax]) // general use
 
     var description: String {
         switch self {
@@ -220,7 +222,7 @@ indirect enum Syntax: CustomStringConvertible, Equatable {
             let ats = fd.args.map(\.description).joined(separator: " ")
             return "let rec \(fd.name)\n  \(ats) =\n  \(fd.body) in\n  \(e2)"
         case .APP(let e, let es): return "(\(e) \(es.map(\.description).joined(separator: " ")))"
-        case .TUPLE(let es): return "(\(es.map(\.description).joined(separator: ", "))"
+        case .TUPLE(let es): return "(\(es.map(\.description).joined(separator: ", ")))"
         case .LETTUPLE(let xts, let e1, let e2): return "let (\(xts.map(\.description).joined(separator: ", "))) = \(e1) in\n  \(e2)"
         case .ARRAY(let e1, let e2): return "Array.make \(e1) \(e2)"
         case .GET(let e1, let e2): return "\(e1).(\(e2))"
@@ -239,21 +241,16 @@ indirect enum Syntax: CustomStringConvertible, Equatable {
         }
     }
 
-    case punct(String)
     var to_s: String { if case .punct(let s) = self { return s } else { fatalError() } }
-
-    case composite([Syntax])
     var to_a: [Syntax] { if case .composite(let xs) = self { return xs } else { fatalError() } }
-
-    case fundef(Fundef)
     var to_fd: Fundef { if case .fundef(let fd) = self { return fd } else { fatalError() } }
     struct Fundef: Equatable {
         var name: IdentS
         var args: [Ident]
         var body: Syntax
-        init(_ name: Syntax, _ args: [Syntax], _ body: Syntax) {
-            self.name = IdentS(name: name.to_s, typ: TypS([], .UNIT))
-            self.args = args.map { Ident($0.to_s) }
+        init(_ name: Syntax, _ args: Syntax, _ body: Syntax) {
+            self.name = IdentS(name)
+            self.args = args.to_a.map { Ident($0.to_s) }
             self.body = body
         }
     }
@@ -282,36 +279,30 @@ struct Pass {
 
 struct Parser {
     static func thru(_ ast: [Syntax]) -> [Syntax] { return ast }
-    static func fst(_ ast: [Syntax]) -> [Syntax] { return [ast[0]] }
-    static func snd(_ ast: [Syntax]) -> [Syntax] { return [ast[1]] }
-    static func thd(_ ast: [Syntax]) -> [Syntax] { return [ast[2]] }
-    static func fth(_ ast: [Syntax]) -> [Syntax] { return [ast[3]] }
-    static func word(_ str: String) -> Syntax { return .punct(str) }
+    static func e1(_ ast: [Syntax]) -> [Syntax] { return [ast[0]] }
+    static func e2(_ ast: [Syntax]) -> [Syntax] { return [ast[1]] }
+    static func e3(_ ast: [Syntax]) -> [Syntax] { return [ast[2]] }
+    static func e4(_ ast: [Syntax]) -> [Syntax] { return [ast[3]] }
+    static func merge(_ a: [Syntax], _ b: [Syntax]) -> [Syntax] { return a + b }
     static func to_list(_ ast: [Syntax]) -> [Syntax] { var result = Syntax.EMPTY; for i in stride(from: ast.count - 1, through: 0, by: -2) { result = .CONS(ast[i], result) }; return [result]; }
     static func to_a(_ ast: [Syntax]) -> [Syntax] { [.composite(ast)] }
     static func to_a2(_ ast: [Syntax]) -> [Syntax] { var result = [ast.first!]; for i in stride(from: 2, to: ast.count, by: 2) { result.append(ast[i]) }; return result }
     static func addtyp(_ x: Syntax) -> Ident { Ident(x.to_s) }
     static func addtyp(_ xs: [Syntax]) -> [Ident] { xs.map(addtyp) }
-    static func addts(_ x: Syntax) -> IdentS { IdentS(name: x.to_s, typ: TypS([], .UNIT)) }
-    static func fundef(_ xs: [Syntax]) -> [Syntax] { [.fundef(Syntax.Fundef(xs[0], xs[1].to_a, xs[3]))] }
 
+    static func thruOr(_ f: @escaping ([Syntax])->Syntax) -> ([Syntax])->[Syntax] { return { ast in ast.count == 1 ? ast : [f(ast)]} }
     static func atop<A, B, C, Z>(_ g: @escaping (C)->Z, _ f: @escaping (A, B)->C) -> (A, B)->Z { return { a, w in g(f(a, w)) } }
     static func flip<A, B, Z>(_ f: @escaping (A, B)->Z) -> (B, A)->Z { return { a, w in f(w, a) } }
     static func jot<A, B, Z>(_ g: @escaping (B)->Z, _ f: @escaping (A)->B) -> (A)->Z { return { w in g(f(w)) } }
-    static func com<A, Z>(_ f: @escaping (A, A)->Z) -> (A)->Z { return { w in f(w, w) } }
-    static func over<A, B, Z>(_ g: @escaping (B, B)->Z, _ f: @escaping (A)->B) -> (A, A)->Z { return { a, w in g(f(a), f(w)) } }
-    static func before<A, B, C, Z>(_ g: @escaping (B, C)->Z, _ f: @escaping (A)->B) -> (A, C)->Z { return { a, w in g(f(a), w) } }
-    static func after<A, B, C, Z>(_ g: @escaping (A, C)->Z, _ f: @escaping (B)->C) -> (A, B)->Z { return { a, w in g(a, f(w)) } }
-    static func train<A, B, C, D, Z>(_ h: @escaping (D, C)->Z, _ g: @escaping (A, B)->D, _ f: @escaping (A, B)->C) -> (A, B)->Z { return { a, w in h(g(a, w), f(a, w)) } }
+//    static func com<A, Z>(_ f: @escaping (A, A)->Z) -> (A)->Z { return { w in f(w, w) } }
+//    static func over<A, B, Z>(_ g: @escaping (B, B)->Z, _ f: @escaping (A)->B) -> (A, A)->Z { return { a, w in g(f(a), f(w)) } }
+//    static func before<A, B, C, Z>(_ g: @escaping (B, C)->Z, _ f: @escaping (A)->B) -> (A, C)->Z { return { a, w in g(f(a), w) } }
+//    static func after<A, B, C, Z>(_ g: @escaping (A, C)->Z, _ f: @escaping (B)->C) -> (A, B)->Z { return { a, w in g(a, f(w)) } }
+//    static func train<A, B, C, D, Z>(_ h: @escaping (D, C)->Z, _ g: @escaping (A, B)->D, _ f: @escaping (A, B)->C) -> (A, B)->Z { return { a, w in h(g(a, w), f(a, w)) } }
+    static func train<A, B, Z>(_ h: @escaping (B, B)->Z, _ g: @escaping (A)->B, _ f: @escaping (A)->B) -> (A)->Z { return { w in h(g(w), f(w)) } }
 
     static private func opFold(_ ast: [Syntax], _ opMap: [String: (Syntax, Syntax) -> Syntax]) -> [Syntax] { var result = ast.last!; for i in stride(from: ast.count - 3, through: 0, by: -2) { result = opMap[ast[i + 1].to_s]!(ast[i], result) }; return [result]; }
-    static private func letFold(_ ast: [Syntax]) -> [Syntax] {
-        var result = ast.last!;
-        for i in stride(from: ast.count - 3, through: 0, by: -2) {
-            result = Syntax.LET(Ident(), ast[i], result)
-        //    result = opMap[ast[i + 1].to_s]!(ast[i], result)
-        };
-        return [result] }
+    static private func letFold(_ ast: [Syntax]) -> Syntax { var result = ast.last!; for i in stride(from: ast.count - 3, through: 0, by: -2) { result = Syntax.LET(Ident(), ast[i], result) }; return result }
 
     static func term(_ r: Regex<Substring>) -> PEGRule<Syntax> { .terminal(r, { str in .punct(str) }) }
     static func seq(_ r: [PEGRule<Syntax>]) -> PEGRule<Syntax> { .sequence(r, { ast in ast }) }
@@ -324,15 +315,15 @@ struct Parser {
             .sequence([term(/let\s*\(/), .ref("pat"), term(/\)\s*=/), .ref("exp"), term(/in\b/), .ref("exp")], { [.LETTUPLE(addtyp($0[1].to_a), $0[3], $0[5])] }),
             .sequence([term(/let\b/), .ref("ident"), term(/=/), .ref("exp"), term(/in\b/), .ref("exp")], { [.LET(addtyp($0[1]), $0[3], $0[5])] }),
             .sequence([term(/if\b/), .ref("exp-semicolon"), term(/then\b/), .ref("exp-semicolon"), term(/else\b/), .ref("exp-semicolon")], { [.IF($0[1], $0[3], $0[5])] }),
-            .sequence([term(/shift\s*\(\s*fun\b/), .ref("ident"), term(/\-\>/), .ref("exp"), term(/\)/)], { [.SHIFT(addts($0[1]), $0[3], Typ.gentyp())] }),
+            .sequence([term(/shift\s*\(\s*fun\b/), .ref("ident"), term(/\-\>/), .ref("exp"), term(/\)/)], { [.SHIFT(IdentS($0[1]), $0[3], Typ.gentyp())] }),
             .sequence([term(/reset\s*\(\s*fun\s*\(\s*\)\s*\-\>/), .ref("exp"), term(/\)/)], { [.RESET($0[1], Typ.gentyp())] }),
             .sequence([term(/match\b/), .ref("exp"), term(/with\b/), .ref("match-clauses")], { [.MATCH($0[1], $0[3], $0[4])] }),
             .ref("exp-semicolon")], thru),
-        "exp-semicolon": .sequence([.ref("exp-if"), .zeroMore([term(/\;/), .ref("exp-if")], thru)], { $0.count == 1 ? $0 : letFold($0) }),
+        "exp-semicolon": .sequence([.ref("exp-if"), .zeroMore([term(/\;/), .ref("exp-if")], thru)], thruOr(letFold)),
         "exp-if": .ref("exp-cons"),
-        "exp-cons": .sequence([.ref("exp-assign"), .opt([term(/\:\:/), .ref("exp-cons")], thru)], { $0.count == 1 ? $0 : [.CONS($0[0], $0[2])]}),
+        "exp-cons": .sequence([.ref("exp-assign"), .opt([term(/\:\:/), .ref("exp-cons")], thru)], thruOr({.CONS($0[0], $0[2])})),
         "exp-assign": .sequence([.ref("exp-comma"), .opt([term(/\<\-/), .ref("exp-comma")], thru)], thru),
-        "exp-comma": .sequence([.ref("exp-equality"), .zeroMore([term(/\,/), .ref("exp-equality")], thru)], {$0.count == 1 ? $0 : [.TUPLE(to_a2($0))]}),
+        "exp-comma": .sequence([.ref("exp-equality"), .zeroMore([term(/\,/), .ref("exp-equality")], thru)], thruOr({.TUPLE(to_a2($0))})),
         "exp-equality": .sequence([.ref("exp-add"), .zeroMore([.choice([term(/\=\b/), .ref("exp-add"), term(/\<\>\b/), .ref("exp-add"), term(/\<\b/), .ref("exp-add"), term(/\>\b/), .ref("exp-add"), term(/\<\=\b/), .ref("exp-add"), term(/\>\=\b/), .ref("exp-add") ], thru)], thru)], { ast in opFold(ast, ["=": Syntax.EQ, "<>": atop(Syntax.NOT, Syntax.EQ), "<": atop(Syntax.NOT, flip(Syntax.LE)), ">": atop(Syntax.NOT, Syntax.LE), "<=": Syntax.LE, ">=": flip(Syntax.LE)]) }),
         "exp-add": .sequence([.ref("exp-mul"), .zeroMore([.choice([term(/\+/), .ref("exp-mul"), term(/\-/), .ref("exp-mul"), term(/\+\./), .ref("exp-mul"), term(/\-\./), .ref("exp-mul"), ], thru)], thru)], { ast in opFold(ast, ["+": Syntax.ADD, "-": Syntax.SUB, "+.": Syntax.FADD, "-.": Syntax.FSUB]) }),
         "exp-mul": .sequence([.ref("exp-unary"), .zeroMore([.choice([term(/\*\./), .ref("exp-unary"), term(/\/\./), .ref("exp-unary")], thru)], thru)], { ast in opFold(ast, ["*.": Syntax.FMUL, "/.": Syntax.FSUB]) }),
@@ -342,13 +333,13 @@ struct Parser {
             .sequence([term(/\-\.\b/), .ref("exp-unary")], {[.FNEG($0[1])]}),
             .ref("exp-app"),
         ], thru),
-        "exp-app": .sequence([.ref("exp-dot"), .opt([.ref("actual_args")], thru)], {$0.count == 1 ? $0 : [.APP($0[0], $0[1].to_a)]}),
+        "exp-app": .sequence([.ref("exp-dot"), .opt([.ref("actual_args")], thru)], thruOr {.APP($0[0], $0[1].to_a)}),
         "exp-dot": .sequence([.ref("simple_exp"), .zeroMore([.choice([
             .sequence([term(/\.\s*\(/), .ref("exp"), term(/\)\s*\<\-\b/), .ref("exp")], thru),
             .sequence([term(/\.\s*\(/), .ref("exp"), term(/\)/)], thru),
-        ], thru)], thru)], { $0.count == 1 ? $0 : ($0.count == 4 ? [.GET($0[0], $0[2])] : [.PUT($0[0], $0[2], $0[4])]) }),
+        ], thru)], thru)], thruOr({$0.count == 4 ? .GET($0[0], $0[2]) : .PUT($0[0], $0[2], $0[4]) })),
         "simple_exp": .choice([
-            .sequence([term(/\(/), .ref("exp"), term(/\)/)], snd),
+            .sequence([term(/\(/), .ref("exp"), term(/\)/)], e2),
             .terminal(/\(\s*\)/, {_ in .UNIT }),
             .terminal(/\d+\.\d+/, { x in .FLOAT(Double(x)!) }),
             .terminal(/\d+/, { x in .INT(Int(x)!) }),
@@ -356,20 +347,20 @@ struct Parser {
             .sequence([term(/Array\s*.\s*create\b/), .ref("simple_exp"), .ref("simple_exp")], {[.ARRAY($0[1], $0[2])]}),
             .sequence([.ref("ident")], { [.VAR($0.first!.to_s)] }),
             .terminal(/\[\s*\]/, {_ in .EMPTY }),
-            .sequence([term(/\[/), .ref("exp_list"), term(/]/)], snd),
+            .sequence([term(/\[/), .ref("exp_list"), term(/]/)], e2),
         ], thru),
         "exp_list": .opt([.sequence([.ref("exp"), .zeroMore([term(/;/), .ref("exp")], thru)], thru)], to_list),
-        "fundef": .sequence([.ref("ident"), .ref("formal_args"), term(/=/), .ref("exp")], fundef),
+        "fundef": .sequence([.ref("ident"), .ref("formal_args"), term(/=/), .ref("exp")], { [.fundef(Syntax.Fundef($0[0], $0[1], $0[3]))] }),
         "formal_args": .onePlus([.ref("ident")], to_a),
         "actual_args": .onePlus([.ref("simple_exp")], to_a),
-        "pat": .sequence([.ref("ident"), .zeroMore([term(/,/), .ref("ident")], thru)], { to_a(to_a2($0)) }),
+        "pat": .sequence([.ref("ident"), .zeroMore([term(/,/), .ref("ident")], thru)], jot(to_a, to_a2)),
         "match-clauses": .choice([
-            .sequence([.ref("empty_clause"), term(/\|\b/), .ref("cons_clause")], { [$0[0], $0[2]] }),
-            .sequence([.ref("cons_clause"), term(/\|\b/), .ref("empty_clause")], { [$0[2], $0[0]] }),
-            .sequence([term(/\|\b/), .ref("empty_clause"), term(/\|\b/), .ref("cons_clause")], { [$0[1], $0[3]] }),
-            .sequence([term(/\|\b/), .ref("cons_clause"), term(/\|\b/), .ref("empty_clause")], { [$0[3], $0[1]] }),
+            .sequence([.ref("empty_clause"), term(/\|\b/), .ref("cons_clause")], train(merge, e1, e3)),
+            .sequence([.ref("cons_clause"), term(/\|\b/), .ref("empty_clause")], train(merge, e3, e1)),
+            .sequence([term(/\|\b/), .ref("empty_clause"), term(/\|\b/), .ref("cons_clause")], train(merge, e2, e4)),
+            .sequence([term(/\|\b/), .ref("cons_clause"), term(/\|\b/), .ref("empty_clause")], train(merge, e4, e2)),
         ], thru),
-        "empty_clause": .sequence([term(/\[\s*\]\s*\-\>\b/), .ref("exp")], snd),
+        "empty_clause": .sequence([term(/\[\s*\]\s*\-\>\b/), .ref("exp")], e2),
         "cons_clause": .sequence([.ref("ident"), term(/::/), .ref("ident"), term(/->/), .ref("exp")], { [.pattern(Ident($0[0]), Ident($0[2]), $0[4])] }),
         "reserved": term(/(?:not|if|then|else|let|in|rec|match|with|fun|shift|reset|true|false)\b/),
         "ident": .sequence([.forbid([.ref("reserved")]), term(/[A-Za-z_][A-Za-z0-9_]*/)], thru),

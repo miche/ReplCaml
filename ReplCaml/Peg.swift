@@ -69,8 +69,8 @@ class PEGParser<AST> where AST: Equatable {
         var debugDescription: String { "\(pos):\(rule)" }
     }
     private var memo: [MemoKey : PEGResult<AST>]
-    private var ruleStack: Set<MemoKey> = []
 #if DEBUG
+    private var ruleStack: Set<MemoKey> = []
     private var level: Int = 0
 #endif
 
@@ -80,17 +80,15 @@ class PEGParser<AST> where AST: Equatable {
     }
 
     func parse(_ s: String, _ r: String) -> PEGResult<AST> {
-        memo = [:]
-        ruleStack = []
-
-        let code = s[...]
-        guard let rule = lib[r] else { return .init(false, nil, code, "undefined rule: \(r)") }
 #if DEBUG
+        ruleStack = []
         level = 0
 #endif
+        memo = [:]
+        let code = s[...]
+        guard let rule = lib[r] else { return .init(false, nil, code, "undefined rule: \(r)") }
         let result = parseRule(code, rule)
-        if result.matched { return result }
-        else { return result.with(message: "Parse failed") }
+        if result.matched { return result } else { return result.with(message: "Parse failed") }
     }
 
     private func parseRule(_ s: Substring, _ rule: PEGRule<AST>) -> PEGResult<AST> {
@@ -100,10 +98,10 @@ class PEGParser<AST> where AST: Equatable {
         if case .ref(let n) = rule {
             guard let r = lib[n] else { return failed.with(message: "undefined rule: \(n)") }
             let key = MemoKey(rule: n, pos: s.startIndex)
-            if ruleStack.contains(key) { return failed.with(message: "left recursion detected in rule: \(n)") }
             if let cached = memo[key] { return cached }
-            ruleStack.insert(key)
 #if DEBUG
+            if ruleStack.contains(key) { return failed.with(message: "left recursion detected in rule: \(n)") }
+            ruleStack.insert(key)
             level += 1
 #endif
             let result = parseRule(s, r)
@@ -111,8 +109,8 @@ class PEGParser<AST> where AST: Equatable {
             level -= 1
             let filler = String(repeating: " ", count: level)
             print("\(filler) \(n): \(s.startIndex) \(result)")
-#endif
             ruleStack.remove(key)
+#endif
             memo[key] = result
             return result
         }
