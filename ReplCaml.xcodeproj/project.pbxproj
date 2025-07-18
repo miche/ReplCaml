@@ -8,8 +8,8 @@
 
 /* Begin PBXBuildFile section */
 		C64A10542E125B4E007779CB /* .gitignore in Resources */ = {isa = PBXBuildFile; fileRef = C64A10532E125B44007779CB /* .gitignore */; };
-		C6BA80B72E1E102E00B5DC1A /* libLLVM.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = C6E330832E164F5D008C0B78 /* libLLVM.dylib */; };
-		C6CE2EA12E213390002C8957 /* libLLVM.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = C6E330832E164F5D008C0B78 /* libLLVM.dylib */; };
+		C6B41D9B2E2939030016F5A2 /* libLLVM.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = C6B41D9A2E2939030016F5A2 /* libLLVM.dylib */; };
+		C6BE37D52E29FE1900FA016D /* libLLVM.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = C6B41D9A2E2939030016F5A2 /* libLLVM.dylib */; };
 		C6CE2EA32E213390002C8957 /* .gitignore in Resources */ = {isa = PBXBuildFile; fileRef = C64A10532E125B44007779CB /* .gitignore */; };
 		C6E330842E164F5D008C0B78 /* libLLVM.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = C6E330832E164F5D008C0B78 /* libLLVM.dylib */; };
 /* End PBXBuildFile section */
@@ -62,6 +62,7 @@
 		C6385EDA2E24C46000E0AE66 /* ShiftTest.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ShiftTest.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		C64A10532E125B44007779CB /* .gitignore */ = {isa = PBXFileReference; lastKnownFileType = text; path = .gitignore; sourceTree = "<group>"; };
 		C6A09C5F2E03B15B004D6D12 /* ReplCaml.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ReplCaml.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		C6B41D9A2E2939030016F5A2 /* libLLVM.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libLLVM.dylib; path = ../../../../opt/homebrew/Cellar/llvm/20.1.8/lib/libLLVM.dylib; sourceTree = "<group>"; };
 		C6CE2EA82E213390002C8957 /* Shift.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Shift.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		C6E330752E164BA7008C0B78 /* Bridging */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = Bridging; sourceTree = BUILT_PRODUCTS_DIR; };
 		C6E330832E164F5D008C0B78 /* libLLVM.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libLLVM.dylib; path = ../../../../opt/homebrew/Cellar/llvm/20.1.7/lib/libLLVM.dylib; sourceTree = "<group>"; };
@@ -128,7 +129,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				C6BA80B72E1E102E00B5DC1A /* libLLVM.dylib in Frameworks */,
+				C6BE37D52E29FE1900FA016D /* libLLVM.dylib in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -136,7 +137,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				C6CE2EA12E213390002C8957 /* libLLVM.dylib in Frameworks */,
+				C6B41D9B2E2939030016F5A2 /* libLLVM.dylib in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -180,6 +181,7 @@
 		C6E330482E163137008C0B78 /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
+				C6B41D9A2E2939030016F5A2 /* libLLVM.dylib */,
 				C6E330832E164F5D008C0B78 /* libLLVM.dylib */,
 			);
 			name = Frameworks;
@@ -475,8 +477,8 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				HEADER_SEARCH_PATHS = /opt/homebrew/Cellar/llvm/20.1.7/include;
-				LIBRARY_SEARCH_PATHS = /opt/homebrew/Cellar/llvm/20.1.7/lib;
+				HEADER_SEARCH_PATHS = /opt/homebrew/Cellar/llvm/20.1.8/include;
+				LIBRARY_SEARCH_PATHS = /opt/homebrew/Cellar/llvm/20.1.8/lib;
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
 				MACOSX_DEPLOYMENT_TARGET = 15.5;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
@@ -535,8 +537,8 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				HEADER_SEARCH_PATHS = /opt/homebrew/Cellar/llvm/20.1.7/include;
-				LIBRARY_SEARCH_PATHS = /opt/homebrew/Cellar/llvm/20.1.7/lib;
+				HEADER_SEARCH_PATHS = /opt/homebrew/Cellar/llvm/20.1.8/include;
+				LIBRARY_SEARCH_PATHS = /opt/homebrew/Cellar/llvm/20.1.8/lib;
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
 				MACOSX_DEPLOYMENT_TARGET = 15.5;
 				MTL_ENABLE_DEBUG_INFO = NO;
@@ -563,6 +565,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
+				LIBRARY_SEARCH_PATHS = "$(inherited)";
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = m1.ReplCaml;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -589,6 +592,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
+				LIBRARY_SEARCH_PATHS = "$(inherited)";
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = m1.ReplCaml;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -615,6 +619,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
+				LIBRARY_SEARCH_PATHS = "$(inherited)";
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = m1.ReplCaml;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -641,6 +646,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
+				LIBRARY_SEARCH_PATHS = "$(inherited)";
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = m1.ReplCaml;
 				PRODUCT_NAME = "$(TARGET_NAME)";

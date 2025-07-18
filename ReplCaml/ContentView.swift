@@ -8,6 +8,7 @@ struct ChatMsg: Identifiable, Hashable {
 enum Chat: Hashable {
     case request(text: String)
     case response(tag: String, text: String)
+    case info(tag: String, text: String)
     case error(tag: String, text: String)
 
     static func == (lhs: Chat, rhs: Chat) -> Bool {
@@ -55,6 +56,9 @@ struct ContentView: View {
                                         Bubble(text: text, width: .infinity, align: .trailing, color: .accentColor)
                                     case .response(tag: let tag, text: let text):
                                         Bubble(text: text, align: .leading, color: .gray)
+                                        Text(tag).font(.footnote)
+                                    case .info(tag: let tag, text: let text):
+                                        Bubble(text: text, align: .leading, color: .cyan)
                                         Text(tag).font(.footnote)
                                     case .error(tag: let tag, text: let text):
                                         Bubble(text: text, align: .leading, color: .red)

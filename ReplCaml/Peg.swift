@@ -34,26 +34,25 @@ enum PEGRule<AST>: CustomDebugStringConvertible {
 }
 
 struct PEGResult<AST>: Equatable, CustomDebugStringConvertible where AST: Equatable {
-    static func == (l: PEGResult<AST>, r: PEGResult<AST>) -> Bool {
-        l.matched == r.matched &&
-        l.rest == r.rest &&
-        l.errorMessage == r.errorMessage &&
-        (l.ast == nil && r.ast == nil || l.ast!.elementsEqual(r.ast!))
-    }
-
     var matched: Bool
     var ast: [AST]?
     var rest: Substring
-    var errorMessage: String?
+    var message: String?
 
-    init(_ matched: Bool, _ ast: [AST]?, _ rest: Substring, _ errorMessage: String? = nil) {
+    init(_ matched: Bool, _ ast: [AST]?, _ rest: Substring, _ message: String? = nil) {
         self.rest = rest
         self.matched = matched
         self.ast = ast
-        self.errorMessage = errorMessage
+        self.message = message
     }
     func with(message msg: String) -> PEGResult<AST> {
         return .init(matched, ast, rest, msg)
+    }
+    static func == (l: PEGResult<AST>, r: PEGResult<AST>) -> Bool {
+        l.matched == r.matched &&
+        l.rest == r.rest &&
+        l.message == r.message &&
+        (l.ast == nil && r.ast == nil || l.ast!.elementsEqual(r.ast!))
     }
     var debugDescription: String {
         return "\(matched), \(ast ?? []), \(rest)"
@@ -107,8 +106,8 @@ class PEGParser<AST> where AST: Equatable {
             let result = parseRule(s, r)
 #if DEBUG
             level -= 1
-            let filler = String(repeating: " ", count: level)
-            print("\(filler) \(n): \(s.startIndex) \(result)")
+//            let filler = String(repeating: " ", count: level)
+//            print("\(filler) \(n): \(s.startIndex) \(result)")
             ruleStack.remove(key)
 #endif
             memo[key] = result
