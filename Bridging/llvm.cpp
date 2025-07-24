@@ -91,7 +91,7 @@ public:
         return call(ft, fn, {(llvm::Value *)cl, (llvm::Value *)w});
     }
 
-    inline void dump() { mod.print(llvm::outs(), nullptr); }
+    inline std::string dump() { std::string buf; llvm::raw_string_ostream os(buf); mod.print(os, nullptr); os.flush(); return buf; };
 };
 
 LLVMKit::Impl::Impl(const char *name): mod(name, ctx), bldr(llvm::IRBuilder<>(ctx)) {
@@ -154,8 +154,8 @@ void *LLVMKit::ans(const void *value) const {
     return impl->ans(value);
 }
 // -----
-void LLVMKit::dump() const {
-    impl->dump();
+std::string LLVMKit::dump() const {
+    return impl->dump();
 }
 
 void *LLVMKit::emitfunc(const char* name) const {

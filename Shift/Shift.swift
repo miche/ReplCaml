@@ -317,7 +317,6 @@ indirect enum KNormal: CustomStringConvertible, Equatable {
     case LET(Ident, KNormal, KNormal)
     case VAR(Id.T)
     case LETREC(Ident, [Ident], KNormal, KNormal)
-//    case LETREC(Fundef, KNormal)
     case APP(Id.T, [Id.T])
     case TUPLE([Id.T])
     case LETTUPLE([Ident], Id.T, KNormal)
@@ -360,7 +359,6 @@ indirect enum KNormal: CustomStringConvertible, Equatable {
         case .IFLE(let x, let y, let z, let w): return "if \(x) <= \(y)\n  then \(z)\n  else \(w)"
         case .LET(let x, let y, let z): return "let \(x) = \(y) in\n  \(z)"
         case .VAR(let x): return x
-    //  case .LETREC(let x, let y): return "let rec \(x.name) \(x.args.map(\.description).joined(separator: " ")) = \(x.body) in\n  \(y)"
         case .LETREC(let xts, let yts, let e1, let e2): return "let rec \(xts) \(yts.map(\.description).joined(separator: " ")) = \(e1) in\n  \(e2)"
         case .APP(let x, let y): return "\(x) \(y.map(\.description).joined(separator: " "))"
         case .TUPLE(let x): return "(\(x.map(\.description).joined(separator: ", ")))"
@@ -373,9 +371,173 @@ indirect enum KNormal: CustomStringConvertible, Equatable {
     }
 }
 
-enum Closure { case UNIT }
+struct Prog: CustomStringConvertible {
+    var defs: [Fundef]
+    var main: Closure
 
-enum Asm { case UNIT }
+    struct Fundef: CustomStringConvertible {
+        var name: Ident
+        var args: [Ident]
+        var formal_fv: [Ident]
+        var body: Closure
+
+        var description: String {
+            let fvs = formal_fv.map(\.name.description)
+            return "let rec \(name) [\(fvs.joined(separator: ", "))] \(fvs.joined(separator: " "))=\n  \(body))"
+        }
+    }
+    indirect enum Closure: CustomStringConvertible {
+        case UNIT
+        case INT(Int)
+        case FLOAT(Double)
+        case NEG(Id.T)
+        case ADD(Id.T, Id.T)
+        case SUB(Id.T, Id.T)
+        case FNEG(Id.T)
+        case FADD(Id.T, Id.T)
+        case FSUB(Id.T, Id.T)
+        case FMUL(Id.T, Id.T)
+        case FDIV(Id.T, Id.T)
+        case IFEQ(Id.T, Id.T, Closure, Closure)
+        case IFLE(Id.T, Id.T, Closure, Closure)
+        case LET(Ident, Closure, Closure)
+        case VAR(Id.T)
+        case MAKECLS(Ident, Id.T, [Id.T], Closure)  // struct closure { var entry: Id.l; var actual_fv: [Id.t] }
+        case APPCLS(Id.T, [Id.T])
+        case APPDIR(Id.T, [Id.T])
+        case TUPLE([Id.T])
+        case LETTUPLE([Ident], Id.T, Closure)
+        case GET(Id.T, Id.T)
+        case PUT(Id.T, Id.T, Id.T)
+        case EXTARRAY(Id.T)
+
+        var fv: Set<Id.T> {
+            switch self {
+            case .UNIT, .INT, .FLOAT, .EXTARRAY: return []
+            case .ADD(let x, let y), .SUB(let x, let y), .GET(let x, let y): return [x, y]
+            case .FADD(let x, let y), .FSUB(let x, let y), .FMUL(let x, let y), .FDIV(let x, let y): return [x, y]
+            case .NEG(let x), .FNEG(let x): return [x]
+            case .IFEQ(let x, let y, let e1, let e2), .IFLE(let x, let y, let e1, let e2): return e1.fv.union(e2.fv).union([x, y])
+            case .LET(let xt, let e1, let e2): return e1.fv.union(e2.fv.subtracting([xt.name]))
+            case .VAR(let x): return [x]
+            case .MAKECLS(let xt, _, let ys, let e): return e.fv.union(ys).subtracting([xt.name])
+            case .APPCLS(let x, let ys): return Set([x] + ys)
+            case .APPDIR(_, let xs), .TUPLE(let xs): return Set(xs)
+            case .LETTUPLE(let xts, let y, let e): return e.fv.subtracting(xts.map(\.name)).union([y])
+            case .PUT(let x, let y, let z): return [x, y, z]
+            }
+        }
+
+        var description: String {
+            switch self {
+            case .UNIT: return "()"
+            case .INT(let x): return "\(x)"
+            case .FLOAT(let x): return "\(x)"
+            case .NEG(let x), .FNEG(let x): return "-\(x)"
+            case .ADD(let x, let y): return "\(x) + \(y)"
+            case .SUB(let x, let y): return "\(x) - \(y)"
+            case .FADD(let x, let y): return "\(x) +. \(y)"
+            case .FSUB(let x, let y): return "\(x) -. \(y)"
+            case .FMUL(let x, let y): return "\(x) *. \(y)"
+            case .FDIV(let x, let y): return "\(x) /. \(y)"
+            case .IFEQ(let x, let y, let e1, let e2): return "if \(x) = \(y)\n  then \(e1)\n  else \(e2)"
+            case .IFLE(let x, let y, let e1, let e2): return "if \(x) <= \(y)\n  then \(e1)\n  else \(e2)"
+            case .LET(let xt, let e1, let e2): return "let \(xt) = \(e1) in\n  \(e2)"
+            case .VAR(let x): return x
+            case .MAKECLS(let xts, let yt, let e1, let e2): return "let rec \(xts) \(yt) = \(e1) in\n  \(e2)"
+            case .APPCLS(let x, let y): return "\(x) \(y.map(\.description).joined(separator: " "))"
+            case .APPDIR(let x, let y): return "\(x) \(y.map(\.description).joined(separator: " "))"
+            case .TUPLE(let x): return "(\(x.map(\.description).joined(separator: ", ")))"
+            case .LETTUPLE(let xt, let y, let e): return "(\(xt.map(\.description).joined(separator: ", "))) = \(y) in\n  \(e)"
+            case .GET(let x, let y): return "\(x).(\(y))"
+            case .PUT(let x, let y, let z): return "\(x).(\(y)) <- \(z)"
+            case .EXTARRAY(let x): return x
+            }
+        }
+    }
+
+    var description: String {
+        "{\(defs.map(\.description).joined(separator: "\n"))}\n\(main)"
+    }
+}
+
+struct Asm {
+    var defs: [Fundef]
+    var main: T
+    indirect enum T: CustomStringConvertible {
+        case ANS(Exp)
+        case LET(Ident, Exp, T)
+        var description: String {
+            switch self {
+            case .ANS(let e): return "ans \(e)"
+            case .LET(let xt, let e, let t): return "let \(xt) \(e) \(t)"
+            }
+        }
+    }
+    enum Exp: CustomStringConvertible {
+        case NOP
+        case LOADINT(Int)   // Li of int
+        case LOADFLOAT(Double)   // FLi of Id.l
+        case NEG(Id.T)  // Neg of Id.t
+        case ADD(Id.T, Id.T)                //        | Add of Id.t * id_or_imm
+        case SUB(Id.T, Id.T)                 //        | Sub of Id.t * id_or_imm
+        case FNEG(Id.T)  // FNeg of Id.t
+        case FADD(Id.T, Id.T)                // FAdd of Id.t * Id.t
+        case FSUB(Id.T, Id.T)                 //  FSub of Id.t * Id.t
+        case FMUL(Id.T, Id.T)                 //  FMul of Id.t * Id.t
+        case FDIV(Id.T, Id.T)                 //   FDiv of Id.t * Id.t
+        case IFEQ(Id.T, Id.T, T, T)       //        | IfEq of Id.t * id_or_imm * t * t
+        case IFLE(Id.T, Id.T, T, T)       //        | IfLE of Id.t * id_or_imm * t * t
+                                              //        | IfGE of Id.t * id_or_imm * t * t (* for simm *)
+                                              //        | IfFEq of Id.t * Id.t * t * t
+                                              //        | IfFLE of Id.t * Id.t * t * t
+        case SETL(Id.T) //        | SetL of Id.l
+        //        | Mr of Id.t
+        //        | Slw of Id.t * id_or_imm
+        case LOAD(Id.T, Id.T) //        | Lwz of Id.t * id_or_imm
+        //        | Stw of Id.t * Id.t * id_or_imm
+        //        | FMr of Id.t
+        //        | Lfd of Id.t * id_or_imm
+        //        | Stfd of Id.t * Id.t * id_or_imm
+        //        | Comment of string
+        case CALLCLS(Id.T, [Id.T], [Id.T]) //        | CallCls of Id.t * Id.t list * Id.t list
+        case CALLDIR(Id.T, [Id.T], [Id.T]) //        | CallDir of Id.l * Id.t list * Id.t list
+        //        | Save of Id.t * Id.t
+        //        | Restore of Id.t
+        var description: String {
+            switch self {
+            case .NOP: return "nop"
+            case .LOADINT(let i): return "i32 \(i)"
+            case .LOADFLOAT(let f): return "double \(f)"
+            case .NEG(let x): return "neg i32 \(x)"
+            case .ADD(let x, let y): return "add i32 \(x), i32 \(y)"
+            case .SUB(let x, let y): return "sub i32 \(x), i32 \(y)"
+            case .FNEG(let x): return "neg double \(x)"
+            case .FADD(let x, let y): return "add double \(x), double \(y)"
+            case .FSUB(let x, let y): return "sub double \(x), double \(y)"
+            case .FMUL(let x, let y): return "mul double \(x), double \(y)"
+            case .FDIV(let x, let y): return "div double \(x), double \(y)"
+            case .IFEQ(let x, let y, let e1, let e2): return "ifeq \(x) = \(y) then \(e1) else \(e2)"
+            case .IFLE(let x, let y, let e1, let e2): return "ifle \(x) <= \(y) then \(e1) else \(e2)"
+            case .SETL(let x): return "setl i32 \(x)"
+            case .CALLCLS(let x, let ys, _): return "call cls \(x)"
+            case .CALLDIR(let x, let ys, _): return "call dir \(x)"
+            default: return "" // TODO:  
+            }
+        }
+    }
+    struct Fundef: CustomStringConvertible {
+        var name: Id.T
+        var args: [Id.T]
+        var body: Exp
+        var rett: Typ
+
+        var description: String {
+            return "let rec \(name) [\(args.map(\.description).joined(separator: ", "))] =\n  \(body))"
+        }
+    }
+}
+
 
 struct Parser {
     static func thru(_ ast: [Syntax]) -> [Syntax] { return ast }
@@ -470,7 +632,7 @@ struct Parser {
 
 typealias Env<T> = [Id.T: T]
 
-class Typing {
+final class Typing {
     /* typing.ml
      struct UnifyError: Error {
      var a: Typ
@@ -482,7 +644,7 @@ class Typing {
      var b: Typ
      }
      */
-    var extenv: Env<Typ> = [:]
+    nonisolated(unsafe) static var extenv: Env<Typ> = [:]
     /* typing.mli
      exception Error of Syntax.t * Type.t * Type.t
      val extenv : Type.t M.t ref
@@ -602,8 +764,8 @@ class Typing {
         case .LET(let xt, let e1, let e2): let (t2, t4, t2a) = g(&env, e1); unify(xt.typ, t4); unify(t2, t2a); env[xt.name] = TypS(t4); let (t1, t3, t2b) = g(&env, e2); unify(t2, t2b); return (t1, t3, t2)
         case .VAR(let x):
             if let v = env[x] { let t = Typ.gentyp(); return (t, instance(v), t) }
-            else if let v = extenv[x] { let t = Typ.gentyp(); return (t, v, t) }
-            else { let t = Typ.gentyp(); let t2 = Typ.gentyp(); extenv[x] = t; return (t2, t, t2) }
+            else if let v = Typing.extenv[x] { let t = Typ.gentyp(); return (t, v, t) }
+            else { let t = Typ.gentyp(); let t2 = Typ.gentyp(); Typing.extenv[x] = t; return (t2, t, t2) }
         case .LETREC(let fd, let e2):
             env[fd.name.name] = fd.name.typ; var env1 = env;
             fd.args.forEach { env1[$0.name] = $0.typ.to_ts }; var env2 = env1
@@ -716,11 +878,11 @@ class Typing {
         }
     }
     func f(_ e: Syntax) -> Syntax {
-        extenv = [:]
+        Typing.extenv = [:]
         var env = Env<TypS>()
         let (_, t2, _) = g(&env, e)
-//        unify(.UNIT, t2)
-        for (k, v) in extenv { extenv.updateValue(deref_typ(v), forKey: k) }
+        unify(.UNIT, t2)
+        for (k, v) in Typing.extenv { Typing.extenv.updateValue(deref_typ(v), forKey: k) }
         return deref_term(e)
     }
     init() { }
@@ -765,18 +927,13 @@ struct KNormalize {
             return (.LETREC(Ident(fd.name), fd.args, e1a, e2a), t2)
         case .APP(let e1, let e2s):
             if case .VAR(let f) = e1, env[f] == nil {
-                /*
-                 (match M.find f !Typing.extenv with
-                 | Type.Fun(_, _, t, _) ->
-                 let rec bind xs = function (* "xs" are identifiers for the arguments *)
-                 | [] -> ExtFunApp(f, xs), t
-                 | e2 :: e2s ->
-                 insert_let (g env e2)
-                 (fun x -> bind (xs @ [x]) e2s) in
-                 bind [] e2s (* left-to-right evaluation *)
-                 | _ -> assert false)]
-                 */
-                fatalError()
+                if let fn = Typing.extenv[f], case .FUN(_, _, let t, _) = fn {
+                    func bind(_ xs: [Id.T], _ y: [Syntax]) -> (KNormal, Typ) {
+                        if y.isEmpty { return (.EXTFUNAPP(f, xs), t) }
+                        else { return insert_let(g(&env, y.first!), {x in bind(xs + [x], Array(y.dropFirst()))})}
+                    }
+                    return bind([], e2s)
+                } else { fatalError() }
             } else {
                 let g_e1 = g(&env, e1)
                 if case .FUN(_, _, let t, _) = g_e1.1 {
@@ -911,7 +1068,7 @@ struct AlphaConv {
     init() {}
 }
 
-struct BetaConv {
+struct BetaReduct {
     func find(_ x: Id.T, _ env: Env<Id.T>) -> Id.T { return env[x] ?? x }
 
     func g(_ env: inout Env<Id.T>, _ k: KNormal) -> KNormal {
@@ -1088,8 +1245,9 @@ struct ElimDeadCodes {
     init() {}
 }
 
-struct ClosureConv {
-    func g(_ env: inout Env<Id.T>, _ k: KNormal) -> KNormal {
+final class ClosureConv {
+    var toplevel: [Prog.Fundef] = []
+    func g(_ env: inout Env<Typ>, _ known: inout Set<Id.T>, _ k: KNormal) -> Prog.Closure {
         switch k {
         case .UNIT: return .UNIT
         case .INT(let i): return .INT(i)
@@ -1102,23 +1260,119 @@ struct ClosureConv {
         case .FSUB(let x, let y): return .FSUB(x, y)
         case .FMUL(let x, let y): return .FMUL(x, y)
         case .FDIV(let x, let y): return .FDIV(x, y)
-        case .IFEQ(let x, let y, let e1, let e2): return .IFEQ(x, y, e1, e2)
-        case .IFLE(let x, let y, let e1, let e2): return .IFLE(x, y, e1, e2)
-        case .LET(let xt, let e1, let e2): return .LET(xt, e1, e2)
+        case .IFEQ(let x, let y, let e1, let e2): return .IFEQ(x, y, g(&env, &known, e1), g(&env, &known, e2))
+        case .IFLE(let x, let y, let e1, let e2): return .IFLE(x, y, g(&env, &known, e1), g(&env, &known, e2))
+        case .LET(let xt, let e1, let e2): env[xt.name] = xt.typ; return .LET(xt, g(&env, &known, e1), g(&env, &known, e2))
         case .VAR(let x): return .VAR(x)
-        case .LETREC(let xt, let xs, let e1, let e2): return .LETREC(xt, xs, e1, e2)
-        case .APP(let x, let ys): return .APP(x, ys)
+        case .LETREC(let xt, let yts, let e1, let e2):
+            let toplevel_backup = toplevel
+            env[xt.name] = xt.typ
+            var enva = env
+            known.insert(xt.name)
+            var knowna = known
+            yts.forEach { enva[$0.name] = $0.typ }
+            var e1a = g(&enva, &knowna, e1)
+            var zs = e1a.fv.subtracting(yts.map(\.name))
+            if !zs.isEmpty {
+                toplevel = toplevel_backup
+                yts.forEach { enva[$0.name] = $0.typ }
+                e1a = g(&enva, &known, e1)
+                knowna = known
+            }
+            zs = e1a.fv.subtracting(Set([xt.name]).union(yts.map(\.name)))
+            let zts = zs.map { z in Ident(z, enva[z]!) }
+            toplevel.append(.init(name: xt, args: yts, formal_fv: zts, body: e1a))
+            let e2a = g(&enva, &knowna, e2)
+            if e2a.fv.contains(xt.name) { return .MAKECLS(xt, xt.name, Array(zs), e2a) } else { return e2a }
+        case .APP(let x, let ys): if known.contains(x) { return .APPDIR(x, ys) } else { return .APPCLS(x, ys) }
         case .TUPLE(let xs): return .TUPLE(xs)
-        case .LETTUPLE(let xts, let y, let e): return .LETTUPLE(xts, y, e)
+        case .LETTUPLE(let xts, let y, let e): xts.forEach { env[$0.name] = $0.typ }; return .LETTUPLE(xts, y, g(&env, &known, e))
         case .GET(let x, let y): return .GET(x, y)
         case .PUT(let x, let y, let z): return .PUT(x, y, z)
         case .EXTARRAY(let x): return .EXTARRAY(x)
-        case .EXTFUNAPP(let x, let ys): return .EXTFUNAPP(x, ys)
+        case .EXTFUNAPP(let x, let ys): return .APPDIR("min_caml_\(x)", ys)
         }
     }
-    func f(_ e: KNormal) -> KNormal {
-        var env = Env<Id.T>()
-        return g(&env, e)
+    func f(_ e: KNormal) -> Prog {
+        toplevel = []
+        var env = Env<Typ>()
+        var known: Set<Id.T> = []
+        let ea = g(&env, &known, e)
+        return Prog(defs: toplevel, main: ea)
+    }
+    init() {}
+}
+
+struct Virtual {
+    func concat(_ e1: Asm.T, _ xt: Ident, _ e2: Asm.T) -> Asm.T {
+        switch e1 {
+        case .ANS(let exp): return .LET(xt, exp, e2)
+        case .LET(let yt, let exp, let e1a): return .LET(yt, exp, concat(e1a, xt, e2))
+        }
+    }
+    func g(_ env: inout Env<Typ>, _ c: Prog.Closure) -> Asm.T {
+        switch c {
+        case .UNIT: return .ANS(.NOP)
+        case .INT(let i): return .ANS(.LOADINT(i))
+        case .FLOAT(let d): return .ANS(.LOADFLOAT(d))
+        case .NEG(let x): return .ANS(.NEG(x))
+        case .ADD(let x, let y): return .ANS(.ADD(x, y))
+        case .SUB(let x, let y): return .ANS(.SUB(x, y))
+        case .FNEG(let x): return .ANS(.FNEG(x))
+        case .FADD(let x, let y): return .ANS(.FADD(x, y))
+        case .FSUB(let x, let y): return .ANS(.FSUB(x, y))
+        case .FMUL(let x, let y): return .ANS(.FMUL(x, y))
+        case .FDIV(let x, let y): return .ANS(.FDIV(x, y))
+        case .IFEQ(let x, let y, let e1, let e2): return .ANS(.IFEQ(x, y, g(&env, e1), g(&env, e2)))
+        case .IFLE(let x, let y, let e1, let e2): return .ANS(.IFLE(x, y, g(&env, e1), g(&env, e2)))
+        case .LET(let xt, let e1, let e2): let e1a = g(&env, e1); env[xt.name] = xt.typ; let e2a = g(&env, e2); return concat(e1a, xt, e2a)
+        case .VAR(let x): fatalError()
+        case .MAKECLS(let xt, let l, let ys, let e2): fatalError()
+        case .APPCLS(let x, let ys): fatalError()
+        case .APPDIR(let x, let ys): fatalError()
+        case .TUPLE(let xs): fatalError()
+        case .LETTUPLE(let xts, let y, let e2): fatalError()
+        case .GET(let x, let y): fatalError()
+        case .PUT(let x, let y, let z): let offset = Id.genid("o")
+            switch env[x]! {
+                default: fatalError()
+            }
+        case .EXTARRAY(let x): return .ANS(.SETL("min_caml_\(x)"))
+        }
+    }
+    let reg_cl = Id.genid("reg_cl")
+    func h(_ f: Prog.Fundef) -> Asm.Fundef {
+        return .init(name: "todo", args: [], body: .NOP, rett: .UNIT)
+//        var env: Env<Typ> = [:]
+//        f.formal_fv.forEach { env[$0.name] = $0.typ }
+//        f.args.forEach { env[$0.name] = $0.typ }
+//        env[f.name.name] = f.name.typ
+//        let (offset, load) = f.formal_fv.reduce((4, g(&env, f.body))) { off, load in
+//            return (off.0 + 4, .LET(load, .LOAD(reg_cl, "\(off.0)"), off.1))
+//        }
+//        if case .FUN(_, _, let t2, _) = f.name.typ {
+//            return .init(name: f.name.name, args: f.args.map(\.name), body: load, rett: t2)
+//        }
+
+        //{ Closure.name = (Id.L(x), t); Closure.args = yts; Closure.formal_fv = zts; Closure.body = e}
+//        let (offset, load) =
+//        expand
+//        zts
+//        (4, g (M.add x t (M.add_list yts (M.add_list zts M.empty))) e)
+//        (fun z offset load -> fletd (z, Lfd (reg_cl, C (offset)), load))
+//        (fun z t offset load -> Let ((z, t), Lwz (reg_cl, C (offset)), load)) in
+
+//        match t with
+//        | Type.Fun (_, _, t2, _) ->
+//        { name = Id.L(x); args = int; fargs = float; body = load; ret = t2 }
+//        | _ -> assert false
+
+    }
+    func f(_ p: Prog) -> Asm {
+        let fundefs = p.defs.map(h)
+        var env: Env<Typ> = [:]
+        let e = g(&env, p.main)
+        return Asm(defs: fundefs, main: e)
     }
     init() {}
 }
@@ -1153,28 +1407,15 @@ struct Pass {
         case .EXTFUNAPP(let x, let ys): return .EXTFUNAPP(x, ys)
         }
     }
-    func typing(_ ast: Syntax) -> Syntax {
-        return ast
-    }
-
-    func knormalize(_ ast: Syntax) -> KNormal { return .UNIT }
-    func alphaConv(_ k: KNormal) -> KNormal { return k }
-    func betaConv(_ k: KNormal) -> KNormal { return k }
-    func reassoc(_ k: KNormal) -> KNormal { return k }
-    func inlining(_ k: KNormal) -> KNormal { return k }
-    func constFold(_ k: KNormal) -> KNormal { return k }
-    func elimDeadCodes(_ k: KNormal) -> KNormal { return k }
-    func closureConv(_ k: KNormal) -> Closure { return .UNIT }
-    func virtualAsm(_ k: Closure) -> Asm { return .UNIT }
-    func emit(_ k: Asm) -> String { return "emit" }
 }
 
 @MainActor
-class Compiler: ObservableObject {
+final class Compiler: ObservableObject {
     @Published private(set) var out: [ChatMsg] = []
     @Published var isProcessing: Bool = false
     private var pendingChats = CurrentValueSubject<[Chat], Never>([])
     private var cancellables = Set<AnyCancellable>()
+    private var optIter = 1
 
     init() {
         pendingChats
@@ -1205,31 +1446,28 @@ class Compiler: ObservableObject {
             guard r.rest.isEmpty else { let taken = code[..<r.rest.startIndex]; append(.error(tag: "Syntax error", text: "\(taken)\n\(spacer(taken.count))\(r.rest)")); return }
             let a = Typing().f(ast); append(.response(tag: "Typing", text: a.description))
             var k = KNormalize().f(a); append(.response(tag: "K Normalizaton", text: k.description))
-            k = AlphaConv().f(k); append(.response(tag: "Alpha Conversion", text: k.description))
+            k = AlphaConv().f(k); append(.response(tag: "α conversion - renaming", text: k.description))
 
-            for n in 1..<10 {
+            for n in 1..<optIter {
                 let k0 = k
                 append(.info(tag: "Optimization", text: "iteration \(n)"))
-                k = BetaConv().f(k); append(.response(tag: "Beta Conversion", text: k.description))
-                k = Reassoc().f(k); append(.response(tag: "Reassoc", text: k.description))
-                k = Inlining().f(k); append(.response(tag: "Inlining", text: k.description))
-                k = ConstFold().f(k); append(.response(tag: "Constant Fold", text: k.description))
+                k = BetaReduct().f(k); append(.response(tag: "β reduction - variable", text: k.description))
+                k = Reassoc().f(k); append(.response(tag: "Reassociation", text: k.description))
+                k = Inlining().f(k); append(.response(tag: "β reduction - function", text: k.description))
+                k = ConstFold().f(k); append(.response(tag: "δ rule - evaluate builtins", text: k.description))
                 k = ElimDeadCodes().f(k); append(.response(tag: "Eliminalte Dead Codes", text: k.description))
                 if k0 == k { break }
             }
+            let prog = ClosureConv().f(k);
+            for fd in prog.defs { append(.response(tag: "-", text: fd.description)) }
+            append(.response(tag: "Closure Conversion", text: prog.main.description))
 
-//            for _ in 0..<1 {    // optimization
-//                k = Beta.f(k);        await append("Beta", k.description)
-//                k = Assoc.f(k);       await append("Assoc", k.description)
-//                k = Inline.f(k);      await append("Inline", k.description)
-//                k = ConstFold.f(k);   await append("ConstFold", k.description)
-//                k = Elim.f(k);        await append("Elim", k.description)
-//            }
-//            let (fdc, c) = Closure.f(k); for fd in fdc { await append("-", fd.description) }
-//            await append("Closure", c.description)
 //            let (fda, asm) = Virtual.f(fdc, c); for fd in fda { await append("-", fd.description) }
 //            await append("Virtual", asm.description)
 //            let x = Emit.f(fda, asm); await append("Emit", x)
+            Typing.extenv.forEach { k, v in
+                append(.info(tag: "extenv", text: "\(k) : \(v)"))
+            }
         }
     }
 }

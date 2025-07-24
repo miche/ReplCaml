@@ -8,10 +8,26 @@
 
 /* Begin PBXBuildFile section */
 		C64A10542E125B4E007779CB /* .gitignore in Resources */ = {isa = PBXBuildFile; fileRef = C64A10532E125B44007779CB /* .gitignore */; };
-		C6B41D9B2E2939030016F5A2 /* libLLVM.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = C6B41D9A2E2939030016F5A2 /* libLLVM.dylib */; };
+		C64DC72E2E30F3C900C1931C /* libMLIRMemRefDialect.a in Frameworks */ = {isa = PBXBuildFile; fileRef = C64DC72D2E30F3C900C1931C /* libMLIRMemRefDialect.a */; };
+		C64DC7302E30F3DE00C1931C /* libMLIRMemRefToLLVM.a in Frameworks */ = {isa = PBXBuildFile; fileRef = C64DC72F2E30F3DE00C1931C /* libMLIRMemRefToLLVM.a */; };
+		C6A29EA62E2F1FD900963C5B /* libMLIRSupport.a in Frameworks */ = {isa = PBXBuildFile; fileRef = C6A29EA52E2F1FD900963C5B /* libMLIRSupport.a */; };
+		C6A29EA82E2F1FF300963C5B /* libMLIRIR.a in Frameworks */ = {isa = PBXBuildFile; fileRef = C6A29EA72E2F1FF300963C5B /* libMLIRIR.a */; };
+		C6A29EAA2E2F1FFC00963C5B /* libMLIRDialect.a in Frameworks */ = {isa = PBXBuildFile; fileRef = C6A29EA92E2F1FFC00963C5B /* libMLIRDialect.a */; };
+		C6A29EAC2E2F201100963C5B /* libMLIRLLVMDialect.a in Frameworks */ = {isa = PBXBuildFile; fileRef = C6A29EAB2E2F201100963C5B /* libMLIRLLVMDialect.a */; };
+		C6A29EAE2E2F201F00963C5B /* libMLIRComplexDialect.a in Frameworks */ = {isa = PBXBuildFile; fileRef = C6A29EAD2E2F201F00963C5B /* libMLIRComplexDialect.a */; };
+		C6A29EB02E2F203100963C5B /* libMLIRArithDialect.a in Frameworks */ = {isa = PBXBuildFile; fileRef = C6A29EAF2E2F203100963C5B /* libMLIRArithDialect.a */; };
+		C6A29EB22E2F203F00963C5B /* libMLIRFuncDialect.a in Frameworks */ = {isa = PBXBuildFile; fileRef = C6A29EB12E2F203F00963C5B /* libMLIRFuncDialect.a */; };
+		C6A29EB42E2F205000963C5B /* libMLIRComplexToLLVM.a in Frameworks */ = {isa = PBXBuildFile; fileRef = C6A29EB32E2F204F00963C5B /* libMLIRComplexToLLVM.a */; };
+		C6A29EB62E2F206A00963C5B /* libMLIRArithToLLVM.a in Frameworks */ = {isa = PBXBuildFile; fileRef = C6A29EB52E2F206A00963C5B /* libMLIRArithToLLVM.a */; };
+		C6A29EB82E2F207700963C5B /* libMLIRFuncToLLVM.a in Frameworks */ = {isa = PBXBuildFile; fileRef = C6A29EB72E2F207700963C5B /* libMLIRFuncToLLVM.a */; };
+		C6A29EBA2E2F208400963C5B /* libMLIRLLVMToLLVMIRTranslation.a in Frameworks */ = {isa = PBXBuildFile; fileRef = C6A29EB92E2F208400963C5B /* libMLIRLLVMToLLVMIRTranslation.a */; };
+		C6A29EBC2E2F209600963C5B /* libMLIRTransforms.a in Frameworks */ = {isa = PBXBuildFile; fileRef = C6A29EBB2E2F209600963C5B /* libMLIRTransforms.a */; };
+		C6A29EBE2E2F20A200963C5B /* libMLIRPass.a in Frameworks */ = {isa = PBXBuildFile; fileRef = C6A29EBD2E2F20A200963C5B /* libMLIRPass.a */; };
+		C6A29EC02E2F20D400963C5B /* libMLIRBuiltinToLLVMIRTranslation.a in Frameworks */ = {isa = PBXBuildFile; fileRef = C6A29EBF2E2F20D400963C5B /* libMLIRBuiltinToLLVMIRTranslation.a */; };
+		C6A3DD082E2E9302000C08FD /* libMLIR.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = C6A3DD072E2E9302000C08FD /* libMLIR.dylib */; };
 		C6BE37D52E29FE1900FA016D /* libLLVM.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = C6B41D9A2E2939030016F5A2 /* libLLVM.dylib */; };
 		C6CE2EA32E213390002C8957 /* .gitignore in Resources */ = {isa = PBXBuildFile; fileRef = C64A10532E125B44007779CB /* .gitignore */; };
-		C6E330842E164F5D008C0B78 /* libLLVM.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = C6E330832E164F5D008C0B78 /* libLLVM.dylib */; };
+		C6F293682E2B57A4008B8BAE /* libLLVM.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = C6B41D9A2E2939030016F5A2 /* libLLVM.dylib */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -61,7 +77,24 @@
 		C616B0152E1BA96D0037BA89 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		C6385EDA2E24C46000E0AE66 /* ShiftTest.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ShiftTest.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		C64A10532E125B44007779CB /* .gitignore */ = {isa = PBXFileReference; lastKnownFileType = text; path = .gitignore; sourceTree = "<group>"; };
+		C64DC72D2E30F3C900C1931C /* libMLIRMemRefDialect.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libMLIRMemRefDialect.a; path = ../../../../opt/homebrew/Cellar/llvm/20.1.8/lib/libMLIRMemRefDialect.a; sourceTree = "<group>"; };
+		C64DC72F2E30F3DE00C1931C /* libMLIRMemRefToLLVM.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libMLIRMemRefToLLVM.a; path = ../../../../opt/homebrew/Cellar/llvm/20.1.8/lib/libMLIRMemRefToLLVM.a; sourceTree = "<group>"; };
 		C6A09C5F2E03B15B004D6D12 /* ReplCaml.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ReplCaml.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		C6A29EA52E2F1FD900963C5B /* libMLIRSupport.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libMLIRSupport.a; path = ../../../../opt/homebrew/Cellar/llvm/20.1.8/lib/libMLIRSupport.a; sourceTree = "<group>"; };
+		C6A29EA72E2F1FF300963C5B /* libMLIRIR.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libMLIRIR.a; path = ../../../../opt/homebrew/Cellar/llvm/20.1.8/lib/libMLIRIR.a; sourceTree = "<group>"; };
+		C6A29EA92E2F1FFC00963C5B /* libMLIRDialect.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libMLIRDialect.a; path = ../../../../opt/homebrew/Cellar/llvm/20.1.8/lib/libMLIRDialect.a; sourceTree = "<group>"; };
+		C6A29EAB2E2F201100963C5B /* libMLIRLLVMDialect.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libMLIRLLVMDialect.a; path = ../../../../opt/homebrew/Cellar/llvm/20.1.8/lib/libMLIRLLVMDialect.a; sourceTree = "<group>"; };
+		C6A29EAD2E2F201F00963C5B /* libMLIRComplexDialect.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libMLIRComplexDialect.a; path = ../../../../opt/homebrew/Cellar/llvm/20.1.8/lib/libMLIRComplexDialect.a; sourceTree = "<group>"; };
+		C6A29EAF2E2F203100963C5B /* libMLIRArithDialect.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libMLIRArithDialect.a; path = ../../../../opt/homebrew/Cellar/llvm/20.1.8/lib/libMLIRArithDialect.a; sourceTree = "<group>"; };
+		C6A29EB12E2F203F00963C5B /* libMLIRFuncDialect.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libMLIRFuncDialect.a; path = ../../../../opt/homebrew/Cellar/llvm/20.1.8/lib/libMLIRFuncDialect.a; sourceTree = "<group>"; };
+		C6A29EB32E2F204F00963C5B /* libMLIRComplexToLLVM.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libMLIRComplexToLLVM.a; path = ../../../../opt/homebrew/Cellar/llvm/20.1.8/lib/libMLIRComplexToLLVM.a; sourceTree = "<group>"; };
+		C6A29EB52E2F206A00963C5B /* libMLIRArithToLLVM.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libMLIRArithToLLVM.a; path = ../../../../opt/homebrew/Cellar/llvm/20.1.8/lib/libMLIRArithToLLVM.a; sourceTree = "<group>"; };
+		C6A29EB72E2F207700963C5B /* libMLIRFuncToLLVM.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libMLIRFuncToLLVM.a; path = ../../../../opt/homebrew/Cellar/llvm/20.1.8/lib/libMLIRFuncToLLVM.a; sourceTree = "<group>"; };
+		C6A29EB92E2F208400963C5B /* libMLIRLLVMToLLVMIRTranslation.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libMLIRLLVMToLLVMIRTranslation.a; path = ../../../../opt/homebrew/Cellar/llvm/20.1.8/lib/libMLIRLLVMToLLVMIRTranslation.a; sourceTree = "<group>"; };
+		C6A29EBB2E2F209600963C5B /* libMLIRTransforms.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libMLIRTransforms.a; path = ../../../../opt/homebrew/Cellar/llvm/20.1.8/lib/libMLIRTransforms.a; sourceTree = "<group>"; };
+		C6A29EBD2E2F20A200963C5B /* libMLIRPass.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libMLIRPass.a; path = ../../../../opt/homebrew/Cellar/llvm/20.1.8/lib/libMLIRPass.a; sourceTree = "<group>"; };
+		C6A29EBF2E2F20D400963C5B /* libMLIRBuiltinToLLVMIRTranslation.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libMLIRBuiltinToLLVMIRTranslation.a; path = ../../../../opt/homebrew/Cellar/llvm/20.1.8/lib/libMLIRBuiltinToLLVMIRTranslation.a; sourceTree = "<group>"; };
+		C6A3DD072E2E9302000C08FD /* libMLIR.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libMLIR.dylib; path = ../../../../opt/homebrew/Cellar/llvm/20.1.8/lib/libMLIR.dylib; sourceTree = "<group>"; };
 		C6B41D9A2E2939030016F5A2 /* libLLVM.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libLLVM.dylib; path = ../../../../opt/homebrew/Cellar/llvm/20.1.8/lib/libLLVM.dylib; sourceTree = "<group>"; };
 		C6CE2EA82E213390002C8957 /* Shift.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Shift.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		C6E330752E164BA7008C0B78 /* Bridging */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = Bridging; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -69,6 +102,13 @@
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		C61637DF2E2D102200E94003 /* Exceptions for "ReplCaml" folder in "Bridging" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Peg.swift,
+			);
+			target = C6E330742E164BA7008C0B78 /* Bridging */;
+		};
 		C6CE2EA92E213390002C8957 /* Exceptions for "ReplCaml" folder in "Shift" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
@@ -97,6 +137,7 @@
 		C6A09C612E03B15B004D6D12 /* ReplCaml */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
+				C61637DF2E2D102200E94003 /* Exceptions for "ReplCaml" folder in "Bridging" target */,
 				C6CE2EA92E213390002C8957 /* Exceptions for "ReplCaml" folder in "Shift" target */,
 			);
 			path = ReplCaml;
@@ -137,7 +178,6 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				C6B41D9B2E2939030016F5A2 /* libLLVM.dylib in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -145,7 +185,24 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				C6E330842E164F5D008C0B78 /* libLLVM.dylib in Frameworks */,
+				C6A3DD082E2E9302000C08FD /* libMLIR.dylib in Frameworks */,
+				C6F293682E2B57A4008B8BAE /* libLLVM.dylib in Frameworks */,
+				C6A29EA62E2F1FD900963C5B /* libMLIRSupport.a in Frameworks */,
+				C6A29EA82E2F1FF300963C5B /* libMLIRIR.a in Frameworks */,
+				C6A29EAA2E2F1FFC00963C5B /* libMLIRDialect.a in Frameworks */,
+				C6A29EAC2E2F201100963C5B /* libMLIRLLVMDialect.a in Frameworks */,
+				C6A29EAE2E2F201F00963C5B /* libMLIRComplexDialect.a in Frameworks */,
+				C6A29EB02E2F203100963C5B /* libMLIRArithDialect.a in Frameworks */,
+				C6A29EB22E2F203F00963C5B /* libMLIRFuncDialect.a in Frameworks */,
+				C64DC72E2E30F3C900C1931C /* libMLIRMemRefDialect.a in Frameworks */,
+				C6A29EB42E2F205000963C5B /* libMLIRComplexToLLVM.a in Frameworks */,
+				C6A29EB62E2F206A00963C5B /* libMLIRArithToLLVM.a in Frameworks */,
+				C6A29EB82E2F207700963C5B /* libMLIRFuncToLLVM.a in Frameworks */,
+				C64DC7302E30F3DE00C1931C /* libMLIRMemRefToLLVM.a in Frameworks */,
+				C6A29EC02E2F20D400963C5B /* libMLIRBuiltinToLLVMIRTranslation.a in Frameworks */,
+				C6A29EBA2E2F208400963C5B /* libMLIRLLVMToLLVMIRTranslation.a in Frameworks */,
+				C6A29EBC2E2F209600963C5B /* libMLIRTransforms.a in Frameworks */,
+				C6A29EBE2E2F20A200963C5B /* libMLIRPass.a in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -181,6 +238,23 @@
 		C6E330482E163137008C0B78 /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
+				C64DC72F2E30F3DE00C1931C /* libMLIRMemRefToLLVM.a */,
+				C64DC72D2E30F3C900C1931C /* libMLIRMemRefDialect.a */,
+				C6A29EBF2E2F20D400963C5B /* libMLIRBuiltinToLLVMIRTranslation.a */,
+				C6A29EBD2E2F20A200963C5B /* libMLIRPass.a */,
+				C6A29EBB2E2F209600963C5B /* libMLIRTransforms.a */,
+				C6A29EB92E2F208400963C5B /* libMLIRLLVMToLLVMIRTranslation.a */,
+				C6A29EB72E2F207700963C5B /* libMLIRFuncToLLVM.a */,
+				C6A29EB52E2F206A00963C5B /* libMLIRArithToLLVM.a */,
+				C6A29EB32E2F204F00963C5B /* libMLIRComplexToLLVM.a */,
+				C6A29EB12E2F203F00963C5B /* libMLIRFuncDialect.a */,
+				C6A29EAF2E2F203100963C5B /* libMLIRArithDialect.a */,
+				C6A29EAD2E2F201F00963C5B /* libMLIRComplexDialect.a */,
+				C6A29EAB2E2F201100963C5B /* libMLIRLLVMDialect.a */,
+				C6A29EA92E2F1FFC00963C5B /* libMLIRDialect.a */,
+				C6A29EA72E2F1FF300963C5B /* libMLIRIR.a */,
+				C6A29EA52E2F1FD900963C5B /* libMLIRSupport.a */,
+				C6A3DD072E2E9302000C08FD /* libMLIR.dylib */,
 				C6B41D9A2E2939030016F5A2 /* libLLVM.dylib */,
 				C6E330832E164F5D008C0B78 /* libLLVM.dylib */,
 			);
@@ -477,7 +551,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				HEADER_SEARCH_PATHS = /opt/homebrew/Cellar/llvm/20.1.8/include;
+				HEADER_SEARCH_PATHS = "";
 				LIBRARY_SEARCH_PATHS = /opt/homebrew/Cellar/llvm/20.1.8/lib;
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
 				MACOSX_DEPLOYMENT_TARGET = 15.5;
@@ -488,6 +562,7 @@
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
 				SWIFT_OBJC_INTEROP_MODE = objcxx;
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SYSTEM_HEADER_SEARCH_PATHS = /opt/homebrew/Cellar/llvm/20.1.8/include;
 			};
 			name = Debug;
 		};
@@ -537,7 +612,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				HEADER_SEARCH_PATHS = /opt/homebrew/Cellar/llvm/20.1.8/include;
+				HEADER_SEARCH_PATHS = "";
 				LIBRARY_SEARCH_PATHS = /opt/homebrew/Cellar/llvm/20.1.8/lib;
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
 				MACOSX_DEPLOYMENT_TARGET = 15.5;
@@ -546,6 +621,7 @@
 				SDKROOT = macosx;
 				SWIFT_COMPILATION_MODE = wholemodule;
 				SWIFT_OBJC_INTEROP_MODE = objcxx;
+				SYSTEM_HEADER_SEARCH_PATHS = /opt/homebrew/Cellar/llvm/20.1.8/include;
 			};
 			name = Release;
 		};
@@ -662,8 +738,9 @@
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
 				FRAMEWORK_SEARCH_PATHS = "";
-				HEADER_SEARCH_PATHS = /opt/homebrew/Cellar/llvm/20.1.7/include;
-				LIBRARY_SEARCH_PATHS = /opt/homebrew/Cellar/llvm/20.1.7/lib;
+				HEADER_SEARCH_PATHS = "$(inherited)";
+				LIBRARY_SEARCH_PATHS = "$(inherited)";
+				OTHER_LDFLAGS = "";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_OBJC_BRIDGING_HEADER = "Bridging/Bridging-Header.h";
 				SWIFT_VERSION = 6.0;
@@ -675,8 +752,9 @@
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
 				FRAMEWORK_SEARCH_PATHS = "";
-				HEADER_SEARCH_PATHS = /opt/homebrew/Cellar/llvm/20.1.7/include;
-				LIBRARY_SEARCH_PATHS = /opt/homebrew/Cellar/llvm/20.1.7/lib;
+				HEADER_SEARCH_PATHS = "$(inherited)";
+				LIBRARY_SEARCH_PATHS = "$(inherited)";
+				OTHER_LDFLAGS = "";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_OBJC_BRIDGING_HEADER = "Bridging/Bridging-Header.h";
 				SWIFT_VERSION = 6.0;

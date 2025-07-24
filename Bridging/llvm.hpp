@@ -1,4 +1,5 @@
 #include "swift/bridging"
+#include <string>
 
 #pragma once
 
@@ -23,7 +24,7 @@ public:
     void *add(const void *l, const void *r) const;
     void *callcls(const void *cl, const void *w) const;
 
-    void dump() const;
+    std::string dump(void) const;
 
     void *emitfunc(const char *name) const;
     void *emitret(const void *ptr) const;
